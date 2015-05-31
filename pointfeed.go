@@ -20,7 +20,7 @@ func main() {
 	flag.StringVar(&host, "host", "localhost", "Interface to listen")
 	flag.StringVar(&port, "port", "8000", "Port to listen")
 	flag.Parse()
-
+	
 	if len(os.Getenv("HOST")) > 0 && len(os.Getenv("PORT")) > 0 {
 		host = os.Getenv("HOST")
 		port = os.Getenv("PORT")
@@ -58,3 +58,7 @@ func main() {
 	log.Printf("[INFO] Listening on %s\n", bind)
 	log.Fatalln(http.ListenAndServe(bind, nil))
 }
+
+
+
+
