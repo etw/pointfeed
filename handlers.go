@@ -38,6 +38,7 @@ func resRender(res http.ResponseWriter, rid *string, feed FeedMeta, body *map[st
 		return
 	}
 	res.Header().Set("Content-Type", "application/atom+xml")
+	res.Header().Set("Request-Id", *rid)
 	fmt.Fprintln(res, string(result))
 }
 
@@ -47,12 +48,13 @@ func rootHandler(res http.ResponseWriter, req *http.Request) {
 
 func allHandler(api *pointapi.PointAPI) func(http.ResponseWriter, *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
+		//		params := req.URL.Query()
 		rid, err := getRid()
 		if err != nil {
 			res.WriteHeader(500)
 			return
 		}
-		log.Printf("[INFO] {%s} %s %s\n", rid, req.Method, req.URL.Path)
+		log.Printf("[INFO] {%s} %s %s\n", rid, req.Method, req.RequestURI)
 
 		body, err := api.GetAll(0)
 		if err != nil {
@@ -73,13 +75,21 @@ func allHandler(api *pointapi.PointAPI) func(http.ResponseWriter, *http.Request)
 
 func tagsHandler(api *pointapi.PointAPI) func(http.ResponseWriter, *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
-		tags := []string{"guitar"}
+		params := req.URL.Query()
+		tags := params["tag"]
 		rid, err := getRid()
 		if err != nil {
 			res.WriteHeader(500)
 			return
 		}
-		log.Printf("[INFO] {%s} %s %s\n", rid, req.Method, req.URL.Path)
+		log.Printf("[INFO] {%s} %s %s\n", rid, req.Method, req.RequestURI)
+
+		if len(tags) < 1 {
+			log.Printf("[WARN] {%s} At least one tag is needed\n", rid)
+			res.WriteHeader(400)
+			fmt.Fprintln(res, "At least one tag is needed")
+			return
+		}
 
 		body, err := api.GetTags(0, tags)
 		if err != nil {
