@@ -30,15 +30,19 @@ func getRid() (string, error) {
 }
 
 func resRender(res http.ResponseWriter, rid *string, feed FeedMeta, body *map[string]interface{}) {
-		posts := (*body)["posts"].([]interface {})
-		result, err := renderFeed(feed, posts)
-		if err != nil {
-			log.Printf("[ERROR] Failed to parse point response: %s\n", err)
-			res.WriteHeader(500)
-			return
-		}
-		res.Header().Set("Content-Type", "application/atom+xml")
-		fmt.Fprintln(res, string(result))
+	posts := (*body)["posts"].([]interface {})
+	result, err := renderFeed(feed, posts)
+	if err != nil {
+		log.Printf("[ERROR] Failed to parse point response: %s\n", err)
+		res.WriteHeader(500)
+		return
+	}
+	res.Header().Set("Content-Type", "application/atom+xml")
+	fmt.Fprintln(res, string(result))
+}
+
+func rootHandler(res http.ResponseWriter, req *http.Request) {
+	fmt.Fprint(res, "")
 }
 
 func allHandler(api *pointapi.PointAPI) func(http.ResponseWriter, *http.Request) {
