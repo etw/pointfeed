@@ -47,6 +47,7 @@ func main() {
 
 	api := pointapi.New(&client, nil)
 
+	http.HandleFunc("/", rootHandler)
 	http.HandleFunc("/feed/all", allHandler(api))
 	http.HandleFunc("/feed/tags", tagsHandler(api))
 
