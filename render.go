@@ -7,21 +7,21 @@ import (
 	"time"
 
 	"golang.org/x/tools/blog/atom"
+	
+	"github.com/etw/pointapi"
 )
 
-func makeEntry(e map[string]interface{}) (*atom.Entry, error) {
+func makeEntry(e pointapi.PostMeta) (atom.Entry, error) {
 	var title string
 
-	author := e["post"].(map[string]interface{})["author"].(map[string]interface{})["login"].(string)
-
 	person := atom.Person{
-		Name: author,
-		URI:  fmt.Sprintf("https://%s.point.im/", author),
+		Name: e.Post.Author.Login,
+		URI:  fmt.Sprintf("https://%s.point.im/", e.Post.Author.Login),
 	}
 
 	post := atom.Text{
 		Type: "text",
-		Body: e["post"].(map[string]interface{})["text"].(string),
+		Body: e.Post.Text,
 	}
 
 	nl := strings.Index(post.Body, "\n")
@@ -33,35 +33,35 @@ func makeEntry(e map[string]interface{}) (*atom.Entry, error) {
 
 	entry := atom.Entry{
 		Title: title,
-		ID:    fmt.Sprintf("%.0f", e["uid"].(float64)),
+		ID:    fmt.Sprintf("%d", e.Uid),
 		Link: []atom.Link{
 			atom.Link{
 				Rel:  "alternate",
-				Href: fmt.Sprintf("https://point.im/%s", e["post"].(map[string]interface{})["id"].(string)),
+				Href: fmt.Sprintf("https://point.im/%s", e.Post.Id),
 			},
 		},
-		Published: atom.TimeStr(e["post"].(map[string]interface{})["created"].(string)),
-		Updated:   atom.TimeStr(e["post"].(map[string]interface{})["created"].(string)),
+		Published: atom.Time(e.Post.Created),
+		Updated:   atom.Time(e.Post.Created),
 		Author:    &person,
 		Content:   &post,
 	}
-	return &entry, nil
+	return entry, nil
 }
 
-func renderFeed(f FeedMeta, p []interface{}) ([]byte, error) {
+func renderFeed(f FeedMeta, p []pointapi.PostMeta) ([]byte, error) {
 	var posts []*atom.Entry
 	var timestamp atom.TimeStr
 
 	for i := range p {
-		entry, err := makeEntry(p[i].(map[string]interface{}))
+		entry, err := makeEntry(p[i])
 		if err != nil {
 			return nil, err
 		}
-		posts = append(posts, entry)
+		posts = append(posts, &entry)
 	}
 
 	if len(p) > 0 {
-		timestamp = atom.TimeStr(p[0].(map[string]interface{})["post"].(map[string]interface{})["created"].(string))
+		timestamp = atom.Time(p[0].Post.Created)
 	} else {
 		timestamp = atom.Time(time.Now())
 	}
