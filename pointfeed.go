@@ -14,14 +14,17 @@ import (
 )
 
 func main() {
-	var purl string
-	var host = os.Getenv("HOST")
-	var port = os.Getenv("PORT")
+	var purl, host, port string
 
 	flag.StringVar(&purl, "proxy", "", "SOCKS5 proxy URI (e.g socks5://localhost:9050/)")
 	flag.StringVar(&host, "host", "localhost", "Interface to listen")
 	flag.StringVar(&port, "port", "8000", "Port to listen")
 	flag.Parse()
+	
+	if len(os.Getenv("HOST")) > 0 && len(os.Getenv("PORT")) > 0 {
+		host = os.Getenv("HOST")
+		port = os.Getenv("PORT")
+	}
 
 	proxyuri, err := url.Parse(purl)
 	if err != nil {
@@ -51,7 +54,9 @@ func main() {
 	http.HandleFunc("/feed/all", allHandler(api))
 	http.HandleFunc("/feed/tags", tagsHandler(api))
 
-	log.Fatalln(http.ListenAndServe(fmt.Sprint(host, ":", port), nil))
+	bind := fmt.Sprintf("%s:%s", host, port)
+	log.Printf("[INFO] Listening on %s\n", bind)
+	log.Fatalln(http.ListenAndServe(bind, nil))
 }
 
 
