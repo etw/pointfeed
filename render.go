@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"strings"
+	"time"
 
 	"golang.org/x/tools/blog/atom"
 )
@@ -49,6 +50,7 @@ func makeEntry(e map[string]interface{}) (*atom.Entry, error) {
 
 func renderFeed(f FeedMeta, p []interface{}) ([]byte, error) {
 	var posts []*atom.Entry
+	var timestamp atom.TimeStr
 
 	for i := range p {
 		entry, err := makeEntry(p[i].(map[string]interface{}))
@@ -56,6 +58,12 @@ func renderFeed(f FeedMeta, p []interface{}) ([]byte, error) {
 			return nil, err
 		}
 		posts = append(posts, entry)
+	}
+
+	if len(p) > 0 {
+		timestamp = atom.TimeStr(p[0].(map[string]interface{})["post"].(map[string]interface{})["created"].(string))
+	} else {
+		timestamp = atom.Time(time.Now())
 	}
 
 	feed := atom.Feed{
@@ -67,7 +75,7 @@ func renderFeed(f FeedMeta, p []interface{}) ([]byte, error) {
 				Href: f.Href,
 			},
 		},
-		Updated: atom.TimeStr(p[0].(map[string]interface{})["post"].(map[string]interface{})["created"].(string)),
+		Updated: timestamp,
 		Entry:   posts,
 	}
 
