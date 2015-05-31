@@ -1,48 +1,48 @@
 package main
 
 import (
+	"encoding/xml"
 	"fmt"
 	"strings"
-	"encoding/xml"
-	
-	"golang.org/x/tools/blog/atom"	
+
+	"golang.org/x/tools/blog/atom"
 )
 
 func makeEntry(e map[string]interface{}) (*atom.Entry, error) {
 	var title string
-	
+
 	author := e["post"].(map[string]interface{})["author"].(map[string]interface{})["login"].(string)
-	
+
 	person := atom.Person{
-		Name:	author,
-    	URI:	fmt.Sprintf("https://%s.point.im/", author),
+		Name: author,
+		URI:  fmt.Sprintf("https://%s.point.im/", author),
 	}
-	
+
 	post := atom.Text{
 		Type: "text",
 		Body: e["post"].(map[string]interface{})["text"].(string),
 	}
-	
+
 	nl := strings.Index(post.Body, "\n")
 	if nl < 0 {
 		title = post.Body
 	} else {
 		title = post.Body[:nl]
 	}
-	
+
 	entry := atom.Entry{
 		Title: title,
-		ID: fmt.Sprintf("%.0f", e["uid"].(float64)),
+		ID:    fmt.Sprintf("%.0f", e["uid"].(float64)),
 		Link: []atom.Link{
 			atom.Link{
-				Rel: "alternate",
+				Rel:  "alternate",
 				Href: fmt.Sprintf("https://point.im/%s", e["post"].(map[string]interface{})["id"].(string)),
 			},
 		},
-		Published:  atom.TimeStr(e["post"].(map[string]interface{})["created"].(string)),
-		Updated:  atom.TimeStr(e["post"].(map[string]interface{})["created"].(string)),
-		Author: &person,
-		Content: &post,
+		Published: atom.TimeStr(e["post"].(map[string]interface{})["created"].(string)),
+		Updated:   atom.TimeStr(e["post"].(map[string]interface{})["created"].(string)),
+		Author:    &person,
+		Content:   &post,
 	}
 	return &entry, nil
 }
@@ -60,16 +60,16 @@ func renderFeed(f FeedMeta, p []interface{}) ([]byte, error) {
 
 	feed := atom.Feed{
 		Title: f.Title,
-		ID: f.ID,
+		ID:    f.ID,
 		Link: []atom.Link{
 			atom.Link{
-				Rel: "alternate",
+				Rel:  "alternate",
 				Href: f.Href,
 			},
 		},
 		Updated: atom.TimeStr(p[0].(map[string]interface{})["post"].(map[string]interface{})["created"].(string)),
-		Entry: posts,
+		Entry:   posts,
 	}
-	
+
 	return xml.Marshal(feed)
 }
