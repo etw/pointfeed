@@ -2,14 +2,24 @@ package main
 
 import (
 	"encoding/xml"
+	"errors"
 	"fmt"
+	"html"
 	"strings"
 	"time"
 
 	"golang.org/x/tools/blog/atom"
-	
+
 	"github.com/etw/pointapi"
 )
+
+const maxtitle = 96
+
+func renderPost(p string) (string, error) {
+	var r string
+	r = strings.Replace(p, "\n", "<br>", -1)
+	return r, nil
+}
 
 func makeEntry(e pointapi.PostMeta) (atom.Entry, error) {
 	var title string
@@ -19,16 +29,23 @@ func makeEntry(e pointapi.PostMeta) (atom.Entry, error) {
 		URI:  fmt.Sprintf("https://%s.point.im/", e.Post.Author.Login),
 	}
 
-	post := atom.Text{
-		Type: "text",
-		Body: e.Post.Text,
+	htmlPost, err := renderPost(html.EscapeString(e.Post.Text))
+	if err != nil {
+		return atom.Entry{}, errors.New("Couldn't render post in HTML")
 	}
 
-	nl := strings.Index(post.Body, "\n")
-	if nl < 0 {
-		title = post.Body
+	post := atom.Text{
+		Type: "html",
+		Body: htmlPost,
+	}
+
+	nl := strings.Index(e.Post.Text, "\n")
+	if nl < 0 && len(e.Post.Text) <= maxtitle {
+		title = e.Post.Text
+	} else if nl >= 0 && nl <= maxtitle {
+		title = e.Post.Text[:nl]
 	} else {
-		title = post.Body[:nl]
+		title = fmt.Sprintf("%s...", e.Post.Text[:(maxtitle-3)])
 	}
 
 	entry := atom.Entry{

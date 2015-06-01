@@ -1,23 +1,23 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
-	"errors"
-	"strings"
 	"strconv"
+	"strings"
 
 	"crypto/rand"
 	"encoding/base64"
-	
+
 	"github.com/etw/pointapi"
 )
 
 type FeedMeta struct {
-	Title	string
-	ID		string
-	Href	string
+	Title string
+	ID    string
+	Href  string
 }
 
 func getRid() (string, error) {
@@ -38,7 +38,7 @@ func resRender(res http.ResponseWriter, rid string, feed FeedMeta, body *pointap
 		res.WriteHeader(500)
 		return
 	}
-	res.Header().Set("Content-Type", "application/atom+xml")
+	res.Header().Set("Content-Type", "application/atom+xml; charset=utf-8")
 	res.Header().Set("Request-Id", rid)
 	fmt.Fprintln(res, string(result))
 }
@@ -58,7 +58,7 @@ func allHandler(api *pointapi.PointAPI) func(http.ResponseWriter, *http.Request)
 			return
 		}
 		log.Printf("[INFO] {%s} %s %s\n", rid, req.Method, req.RequestURI)
-		
+
 		b, ok := params["before"]
 		if ok {
 			before, err = strconv.Atoi(b[0])
@@ -70,20 +70,20 @@ func allHandler(api *pointapi.PointAPI) func(http.ResponseWriter, *http.Request)
 		} else {
 			before = 0
 		}
-		
+
 		body, err := api.GetAll(before)
 		if err != nil {
 			log.Printf("[ERROR] {%s} Failed to get all posts: %s\n", rid, err)
 			res.WriteHeader(500)
 			return
 		}
-		
+
 		feed := FeedMeta{
 			Title: "All posts",
-			ID: "all",
-			Href: "https://point.im/all",
+			ID:    "all",
+			Href:  "https://point.im/all",
 		}
-		
+
 		resRender(res, rid, feed, &body)
 	}
 }
@@ -93,14 +93,14 @@ func tagsHandler(api *pointapi.PointAPI) func(http.ResponseWriter, *http.Request
 		var before int
 		params := req.URL.Query()
 		tags := params["tag"]
-		
+
 		rid, err := getRid()
 		if err != nil {
 			res.WriteHeader(500)
 			return
 		}
 		log.Printf("[INFO] {%s} %s %s\n", rid, req.Method, req.RequestURI)
-		
+
 		b, ok := params["before"]
 		if ok {
 			before, err = strconv.Atoi(b[0])
@@ -112,25 +112,25 @@ func tagsHandler(api *pointapi.PointAPI) func(http.ResponseWriter, *http.Request
 		} else {
 			before = 0
 		}
-		
+
 		if len(tags) < 1 {
 			log.Printf("[WARN] {%s} At least one tag is needed\n", rid)
 			res.WriteHeader(400)
 			fmt.Fprintln(res, "At least one tag is needed")
 			return
 		}
-		
-		body, err := api.GetTags(before,tags)
+
+		body, err := api.GetTags(before, tags)
 		if err != nil {
 			log.Printf("[ERROR] {%s} Failed to get tagged posts: %s\n", rid, err)
 			res.WriteHeader(500)
 			return
 		}
-		
+
 		feed := FeedMeta{
 			Title: fmt.Sprintf("Tagged posts (%s)", strings.Join(tags, ", ")),
-			ID: fmt.Sprintf("tags:%s", strings.Join(tags, ",")),
-			Href: fmt.Sprintf("https://point.im/?tag=%s", strings.Join(tags, "&tag=")),
+			ID:    fmt.Sprintf("tags:%s", strings.Join(tags, ",")),
+			Href:  fmt.Sprintf("https://point.im/?tag=%s", strings.Join(tags, "&tag=")),
 		}
 
 		resRender(res, rid, feed, &body)
