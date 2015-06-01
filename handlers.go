@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -20,27 +21,27 @@ type FeedMeta struct {
 	Href  string
 }
 
-func getRid() (string, error) {
-	rid := make([]byte, 8)
-	_, err := rand.Read(rid)
+func getRid() (*string, error) {
+	ridbin := make([]byte, 8)
+	_, err := rand.Read(ridbin)
 	if err != nil {
 		log.Println("[Error] Couldn't generate request id: %s", err)
-		return "", errors.New("Couldn't generate request id")
+		return nil, errors.New("Couldn't generate request id")
 	}
-	return base64.URLEncoding.EncodeToString(rid), nil
+	ridstr := base64.URLEncoding.EncodeToString(ridbin)
+	return &ridstr, nil
 }
 
-func resRender(res http.ResponseWriter, rid string, feed FeedMeta, body *pointapi.PostList) {
-	posts := (*body).Posts
-	result, err := renderFeed(feed, posts)
+func resRender(res *http.ResponseWriter, rid *string, feed *FeedMeta, body *pointapi.PostList) {
+	result, err := renderFeed(feed, body.Posts)
 	if err != nil {
 		log.Printf("[ERROR] Failed to parse point response: %s\n", err)
-		res.WriteHeader(500)
+		(*res).WriteHeader(500)
 		return
 	}
-	res.Header().Set("Content-Type", "application/atom+xml; charset=utf-8")
-	res.Header().Set("Request-Id", rid)
-	fmt.Fprintln(res, string(result))
+	(*res).Header().Set("Content-Type", "application/atom+xml; charset=utf-8")
+	(*res).Header().Set("Request-Id", *rid)
+	fmt.Fprintln(*res, string(result))
 }
 
 func rootHandler(res http.ResponseWriter, req *http.Request) {
@@ -57,14 +58,14 @@ func allHandler(api *pointapi.PointAPI) func(http.ResponseWriter, *http.Request)
 			res.WriteHeader(500)
 			return
 		}
-		log.Printf("[INFO] {%s} %s %s\n", rid, req.Method, req.RequestURI)
+		log.Printf("[INFO] {%s} %s %s\n", *rid, req.Method, req.RequestURI)
 
 		b, ok := params["before"]
 		if ok {
 			before, err = strconv.Atoi(b[0])
 			if err != nil {
-				log.Printf("[WARN] {%s} Failed parse before param: %s\n", rid, err)
-				res.WriteHeader(500)
+				log.Printf("[WARN] {%s} Couldn't parse 'before' param: %s\n", *rid, err)
+				res.WriteHeader(400)
 				return
 			}
 		} else {
@@ -73,7 +74,7 @@ func allHandler(api *pointapi.PointAPI) func(http.ResponseWriter, *http.Request)
 
 		body, err := api.GetAll(before)
 		if err != nil {
-			log.Printf("[ERROR] {%s} Failed to get all posts: %s\n", rid, err)
+			log.Printf("[ERROR] {%s} Failed to get all posts: %s\n", *rid, err)
 			res.WriteHeader(500)
 			return
 		}
@@ -84,7 +85,7 @@ func allHandler(api *pointapi.PointAPI) func(http.ResponseWriter, *http.Request)
 			Href:  "https://point.im/all",
 		}
 
-		resRender(res, rid, feed, &body)
+		resRender(&res, rid, &feed, body)
 	}
 }
 
@@ -99,13 +100,13 @@ func tagsHandler(api *pointapi.PointAPI) func(http.ResponseWriter, *http.Request
 			res.WriteHeader(500)
 			return
 		}
-		log.Printf("[INFO] {%s} %s %s\n", rid, req.Method, req.RequestURI)
+		log.Printf("[INFO] {%s} %s %s\n", *rid, req.Method, req.RequestURI)
 
 		b, ok := params["before"]
 		if ok {
 			before, err = strconv.Atoi(b[0])
 			if err != nil {
-				log.Printf("[WARN] {%s} Failed parse before param: %s\n", rid, err)
+				log.Printf("[WARN] {%s} Failed parse before param: %s\n", *rid, err)
 				res.WriteHeader(500)
 				return
 			}
@@ -114,7 +115,7 @@ func tagsHandler(api *pointapi.PointAPI) func(http.ResponseWriter, *http.Request
 		}
 
 		if len(tags) < 1 {
-			log.Printf("[WARN] {%s} At least one tag is needed\n", rid)
+			log.Printf("[WARN] {%s} At least one tag is needed\n", *rid)
 			res.WriteHeader(400)
 			fmt.Fprintln(res, "At least one tag is needed")
 			return
@@ -122,17 +123,18 @@ func tagsHandler(api *pointapi.PointAPI) func(http.ResponseWriter, *http.Request
 
 		body, err := api.GetTags(before, tags)
 		if err != nil {
-			log.Printf("[ERROR] {%s} Failed to get tagged posts: %s\n", rid, err)
+			log.Printf("[ERROR] {%s} Failed to get tagged posts: %s\n", *rid, err)
 			res.WriteHeader(500)
 			return
 		}
 
+		sort.Strings(tags)
 		feed := FeedMeta{
 			Title: fmt.Sprintf("Tagged posts (%s)", strings.Join(tags, ", ")),
 			ID:    fmt.Sprintf("tags:%s", strings.Join(tags, ",")),
 			Href:  fmt.Sprintf("https://point.im/?tag=%s", strings.Join(tags, "&tag=")),
 		}
 
-		resRender(res, rid, feed, &body)
+		resRender(&res, rid, &feed, body)
 	}
 }

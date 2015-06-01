@@ -15,13 +15,12 @@ import (
 
 const maxtitle = 96
 
-func renderPost(p string) (string, error) {
-	var r string
-	r = strings.Replace(p, "\n", "<br>", -1)
-	return r, nil
+func renderPost(p *string) (*string, error) {
+	r := strings.Replace(*p, "\n", "<br>", -1)
+	return &r, nil
 }
 
-func makeEntry(e pointapi.PostMeta) (atom.Entry, error) {
+func makeEntry(e *pointapi.PostMeta) (*atom.Entry, error) {
 	var title string
 
 	person := atom.Person{
@@ -29,14 +28,15 @@ func makeEntry(e pointapi.PostMeta) (atom.Entry, error) {
 		URI:  fmt.Sprintf("https://%s.point.im/", e.Post.Author.Login),
 	}
 
-	htmlPost, err := renderPost(html.EscapeString(e.Post.Text))
+	escPost := html.EscapeString(e.Post.Text)
+	htmlPost, err := renderPost(&escPost)
 	if err != nil {
-		return atom.Entry{}, errors.New("Couldn't render post in HTML")
+		return nil, errors.New("Couldn't render post in HTML")
 	}
 
 	post := atom.Text{
 		Type: "html",
-		Body: htmlPost,
+		Body: *htmlPost,
 	}
 
 	nl := strings.Index(e.Post.Text, "\n")
@@ -62,19 +62,19 @@ func makeEntry(e pointapi.PostMeta) (atom.Entry, error) {
 		Author:    &person,
 		Content:   &post,
 	}
-	return entry, nil
+	return &entry, nil
 }
 
-func renderFeed(f FeedMeta, p []pointapi.PostMeta) ([]byte, error) {
+func renderFeed(f *FeedMeta, p []pointapi.PostMeta) ([]byte, error) {
 	var posts []*atom.Entry
 	var timestamp atom.TimeStr
 
 	for i := range p {
-		entry, err := makeEntry(p[i])
+		entry, err := makeEntry(&p[i])
 		if err != nil {
 			return nil, err
 		}
-		posts = append(posts, &entry)
+		posts = append(posts, entry)
 	}
 
 	if len(p) > 0 {
