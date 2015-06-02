@@ -37,9 +37,12 @@ func makeEntry(e *pointapi.PostMeta, api *APISet) (*atom.Entry, error) {
 
 	if nl > maxtitle || (nl < 0 && len(runestr) > maxtitle) {
 		title = fmt.Sprintf("%s...", string(runestr[:(maxtitle-3)]))
+	} else if nl >= 0 && nl <= maxtitle {
+		title = string(runestr[:nl])
 	} else {
 		title = string(runestr)
 	}
+	log.Printf("[DEBUG] Shrunk title: nl index %d, str len %d, title %s\n", nl, len(runestr), title)
 
 	entry := atom.Entry{
 		Title: title,

@@ -8,10 +8,9 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/etw/gelbooru"
 	"github.com/etw/pointapi"
 	"golang.org/x/net/proxy"
-
-	"github.com/etw/gelbooru"
 )
 
 type APISet struct {
