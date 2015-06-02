@@ -11,7 +11,7 @@ import (
 	"github.com/etw/pointapi"
 	"golang.org/x/net/proxy"
 
-	"gelbooru"
+	"github.com/etw/gelbooru"
 )
 
 type APISet struct {
