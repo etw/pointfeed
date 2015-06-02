@@ -7,12 +7,11 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/etw/gelbooru"
 	"github.com/etw/pointapi"
 	"github.com/russross/blackfriday"
 )
 
-func urlGelbooru(u *url.URL, api gelbooru.API) *string {
+func urlGelbooru(u *url.URL) *string {
 	query := u.Query()
 
 	if !(u.Host == "gelbooru.com" && u.Path == "/index.php") {
@@ -31,7 +30,7 @@ func urlGelbooru(u *url.URL, api gelbooru.API) *string {
 		return nil
 	}
 
-	p, err := api.GetPics(&v[0])
+	p, err := api.Gelbooru.GetPicsGb(&v[0])
 	if err != nil {
 		log.Printf("[WARN] Failed to retrieve gelbooru pic %s\n", v)
 		return nil
@@ -57,7 +56,7 @@ func formatFiles(f []string) string {
 	return strings.Join(str, "\n")
 }
 
-func renderPost(p *pointapi.PostData, api *APISet) (string, error) {
+func renderPost(p *pointapi.PostData) (string, error) {
 	rawPost := fmt.Sprintf("%s\n%s", (*p).Text, formatFiles((*p).Files))
 	post := blackfriday.MarkdownCommon([]byte(html.EscapeString(rawPost)))
 	return string(post), nil
