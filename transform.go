@@ -3,19 +3,19 @@ package main
 import (
 	"fmt"
 	"html"
+	"log"
 	"net/url"
 	"strings"
 
+	"github.com/etw/gelbooru"
 	"github.com/etw/pointapi"
 	"github.com/russross/blackfriday"
-
-	"gelbooru"
 )
 
 func urlGelbooru(u *url.URL, api gelbooru.API) *string {
 	query := u.Query()
 
-	if u.Host != "gelbooru.com" || u.Path == "/index.php" {
+	if !(u.Host == "gelbooru.com" && u.Path == "/index.php") {
 		return nil
 	}
 	v, ok := query["page"]
@@ -33,6 +33,7 @@ func urlGelbooru(u *url.URL, api gelbooru.API) *string {
 
 	p, err := api.GetPics(&v[0])
 	if err != nil {
+		log.Printf("[WARN] Failed to retrieve gelbooru pic %s\n", v)
 		return nil
 	}
 	res := fmt.Sprintf("[](%s \"%s\")", (*p).List[0].SampleUrl, (*p).List[0].Tags)
