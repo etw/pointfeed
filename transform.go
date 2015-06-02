@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"html"
 	"log"
@@ -56,8 +57,8 @@ func formatFiles(f []string) string {
 	return strings.Join(str, "\n")
 }
 
-func renderPost(p *pointapi.PostData) (string, error) {
+func renderPost(out *bytes.Buffer, p *pointapi.PostData) error {
 	rawPost := fmt.Sprintf("%s\n%s", (*p).Text, formatFiles((*p).Files))
-	post := blackfriday.MarkdownCommon([]byte(html.EscapeString(rawPost)))
-	return string(post), nil
+	out.Write(blackfriday.MarkdownCommon([]byte(html.EscapeString(rawPost))))
+	return nil
 }

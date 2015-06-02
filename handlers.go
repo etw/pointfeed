@@ -21,11 +21,11 @@ type FeedMeta struct {
 }
 
 type Job struct {
-	Rid     string
-	Meta    FeedMeta
-	Data    *pointapi.PostList
-	Before  int
-	MinSize int
+	Rid      string
+	Meta     FeedMeta
+	Data     []pointapi.PostMeta
+	Before   int
+	MinPosts int
 }
 
 func resRender(res *http.ResponseWriter, job *Job) {
@@ -47,7 +47,8 @@ func resRender(res *http.ResponseWriter, job *Job) {
 }
 
 func rootHandler(res http.ResponseWriter, req *http.Request) {
-	fmt.Fprint(res, "https://github.com/etw/pointfeed/blob/develop/README.md")
+	res.Header().Set("Content-Type", "text/html; charset=utf-8")
+	res.Write(rmf)
 }
 
 func makeJob(p url.Values) (Job, error) {
@@ -74,11 +75,26 @@ func makeJob(p url.Values) (Job, error) {
 	} else {
 		job.Before = 0
 	}
+
+	m, ok := p["minposts"]
+	if ok {
+		job.MinPosts, err = strconv.Atoi(m[0])
+		if err != nil {
+			log.Printf("[WARN] {%s} Couldn't parse 'minposts' param: %s\n", job.Rid, err)
+			return job, err
+		}
+	} else {
+		job.MinPosts = 20
+	}
+
 	return job, nil
 }
 
 func allHandler(res http.ResponseWriter, req *http.Request) {
-	var params = req.URL.Query()
+	var (
+		params   = req.URL.Query()
+		has_next = true
+	)
 
 	job, err := makeJob(params)
 	if err != nil {
@@ -87,24 +103,33 @@ func allHandler(res http.ResponseWriter, req *http.Request) {
 	}
 	log.Printf("[INFO] {%s} %s %s\n", job.Rid, req.Method, req.RequestURI)
 
-	job.Data, err = api.Point.GetAll(job.Before)
-	if err != nil {
-		log.Printf("[ERROR] {%s} Failed to get all posts: %s\n", job.Rid, err)
-		res.WriteHeader(500)
-		return
-	}
-
 	job.Meta = FeedMeta{
 		Title: "All posts",
 		ID:    "all",
 		Href:  "https://point.im/all",
 	}
 
+	for has_next && len(job.Data) < job.MinPosts {
+		data, err := api.Point.GetAll(job.Before)
+		if err != nil {
+			log.Printf("[ERROR] {%s} Failed to get all posts: %s\n", job.Rid, err)
+			res.WriteHeader(500)
+			return
+		}
+
+		has_next = data.HasNext
+		job.Data = append(job.Data, data.Posts...)
+		log.Printf("[DEBUG] {%s} We have %d posts, need at least %d\n", job.Rid, len(job.Data), job.MinPosts)
+	}
+
 	resRender(&res, &job)
 }
 
 func tagsHandler(res http.ResponseWriter, req *http.Request) {
-	var params = req.URL.Query()
+	var (
+		params   = req.URL.Query()
+		has_next = true
+	)
 
 	job, err := makeJob(params)
 	if err != nil {
@@ -123,17 +148,23 @@ func tagsHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	job.Data, err = api.Point.GetTags(job.Before, tags)
-	if err != nil {
-		log.Printf("[ERROR] {%s} Failed to get tagged posts: %s\n", job.Rid, err)
-		res.WriteHeader(500)
-		return
-	}
-
 	job.Meta = FeedMeta{
 		Title: fmt.Sprintf("Tagged posts (%s)", strings.Join(tags, ", ")),
 		ID:    fmt.Sprintf("tags:%s", strings.Join(tags, ",")),
 		Href:  fmt.Sprintf("https://point.im/?tag=%s", strings.Join(tags, "&tag=")),
+	}
+
+	for has_next && len(job.Data) < job.MinPosts {
+		data, err := api.Point.GetTags(job.Before, tags)
+		if err != nil {
+			log.Printf("[ERROR] {%s} Failed to get tagged posts: %s\n", job.Rid, err)
+			res.WriteHeader(500)
+			return
+		}
+
+		has_next = data.HasNext
+		job.Data = append(job.Data, data.Posts...)
+		log.Printf("[DEBUG] {%s} We have %d posts, need at least %d\n", job.Rid, len(job.Data), job.MinPosts)
 	}
 
 	resRender(&res, &job)

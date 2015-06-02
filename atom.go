@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"log"
@@ -14,6 +15,7 @@ const maxTitle = 96
 
 func makeEntry(e *pointapi.PostMeta) (*atom.Entry, error) {
 	var title string
+	var body bytes.Buffer
 
 	log.Printf("[DEBUG] Got post; id: %s, author: %s, files: %d\n", e.Post.Id, e.Post.Author.Login, len(e.Post.Files))
 
@@ -22,14 +24,15 @@ func makeEntry(e *pointapi.PostMeta) (*atom.Entry, error) {
 		URI:  fmt.Sprintf("https://%s.point.im/", e.Post.Author.Login),
 	}
 
-	htmlPost, err := renderPost(&e.Post)
+	err := renderPost(&body, &e.Post)
 	if err != nil {
-		return nil, errors.New("Couldn't render post in HTML")
+		return nil, errors.New("Couldn't render post")
 	}
+	defer body.Reset()
 
 	post := atom.Text{
 		Type: "html",
-		Body: htmlPost,
+		Body: body.String(),
 	}
 
 	runestr := []rune(e.Post.Text)
@@ -42,7 +45,6 @@ func makeEntry(e *pointapi.PostMeta) (*atom.Entry, error) {
 	} else {
 		title = string(runestr)
 	}
-	log.Printf("[DEBUG] Shrunk title: nl index %d, str len %d, title %s\n", nl, len(runestr), title)
 
 	entry := atom.Entry{
 		Title: title,
@@ -65,16 +67,16 @@ func makeFeed(job *Job) (*atom.Feed, error) {
 	var posts []*atom.Entry
 	var timestamp atom.TimeStr
 
-	for i := range job.Data.Posts {
-		entry, err := makeEntry(&job.Data.Posts[i])
+	for i := range job.Data {
+		entry, err := makeEntry(&job.Data[i])
 		if err != nil {
 			return nil, err
 		}
 		posts = append(posts, entry)
 	}
 
-	if len(job.Data.Posts) > 0 {
-		timestamp = atom.Time(job.Data.Posts[0].Post.Created)
+	if len(job.Data) > 0 {
+		timestamp = atom.Time(job.Data[0].Post.Created)
 	} else {
 		timestamp = atom.Time(time.Now())
 	}

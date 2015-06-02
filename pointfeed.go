@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -10,10 +11,13 @@ import (
 
 	"github.com/etw/gobooru"
 	"github.com/etw/pointapi"
+	"github.com/russross/blackfriday"
 	"golang.org/x/net/proxy"
 
 	_ "net/http/pprof"
 )
+
+const readme = "README.md"
 
 type APISet struct {
 	Point    *pointapi.API
@@ -21,6 +25,7 @@ type APISet struct {
 }
 
 var (
+	rmf []byte
 	api *APISet
 )
 
@@ -75,6 +80,12 @@ func main() {
 		Point:    pointapi.New(&client, &auth),
 		Gelbooru: gobooru.New(&client, gobooru.GbFmt),
 	}
+
+	rmraw, err := ioutil.ReadFile(readme)
+	if err != nil {
+		log.Fatalf("[FATAL] Couldn't read %s\n", readme)
+	}
+	rmf = blackfriday.MarkdownCommon(rmraw)
 
 	http.HandleFunc("/", rootHandler)
 	http.HandleFunc("/feed/all", allHandler)
