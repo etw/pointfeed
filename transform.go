@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"html"
 	"log"
@@ -50,14 +51,14 @@ func urlHttps(u *url.URL) {
 
 func formatFiles(f []string) string {
 	var str []string
-	for file, _ := range f {
-		str = append(str, fmt.Sprintf("![%s](%s)", file, file))
+	for i, _ := range f {
+		str = append(str, fmt.Sprintf("![%s](%s)", f[i], f[i]))
 	}
 	return strings.Join(str, "\n")
 }
 
-func renderPost(p *pointapi.PostData) (string, error) {
+func renderPost(out *bytes.Buffer, p *pointapi.PostData) error {
 	rawPost := fmt.Sprintf("%s\n%s", (*p).Text, formatFiles((*p).Files))
-	post := blackfriday.MarkdownCommon([]byte(html.EscapeString(rawPost)))
-	return string(post), nil
+	out.Write(blackfriday.MarkdownCommon([]byte(html.EscapeString(rawPost))))
+	return nil
 }
