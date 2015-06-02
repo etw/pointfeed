@@ -31,10 +31,12 @@ func main() {
 	if len(os.Getenv("HOST")) > 0 && len(os.Getenv("PORT")) > 0 {
 		host = os.Getenv("HOST")
 		port = os.Getenv("PORT")
+		log.Println("[INFO] Got host:port fron environment variables")
 	}
 
 	if len(os.Getenv("POINT_AUTH")) > 0 {
 		auth = os.Getenv("POINT_AUTH")
+		log.Println("[INFO] Got token fron environment variable")
 	}
 
 	proxyuri, err := url.Parse(purl)

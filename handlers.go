@@ -28,13 +28,13 @@ type Job struct {
 func resRender(res *http.ResponseWriter, job *Job) {
 	result, err := makeFeed(job)
 	if err != nil {
-		log.Printf("[ERROR] Failed to parse point response: %s\n", err)
+		log.Printf("[ERROR] {%s} Failed to parse point response: %s\n", *job.Rid, err)
 		(*res).WriteHeader(500)
 		return
 	}
 	feed, err := xml.Marshal(result)
 	if err != nil {
-		log.Printf("[ERROR] Failed to render XML: %s\n", err)
+		log.Printf("[ERROR] {%s} Failed to render XML: %s\n", *job.Rid, err)
 		(*res).WriteHeader(500)
 		return
 	}
