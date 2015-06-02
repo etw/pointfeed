@@ -1,16 +1,13 @@
 package main
 
 import (
-	"errors"
+	"encoding/xml"
 	"fmt"
 	"log"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
-
-	"crypto/rand"
-	"encoding/base64"
 
 	"github.com/etw/pointapi"
 )
@@ -21,34 +18,36 @@ type FeedMeta struct {
 	Href  string
 }
 
-func getRid() (*string, error) {
-	ridbin := make([]byte, 8)
-	_, err := rand.Read(ridbin)
-	if err != nil {
-		log.Println("[Error] Couldn't generate request id: %s", err)
-		return nil, errors.New("Couldn't generate request id")
-	}
-	ridstr := base64.URLEncoding.EncodeToString(ridbin)
-	return &ridstr, nil
+type Job struct {
+	Rid  *string
+	Meta *FeedMeta
+	Data *pointapi.PostList
+	API  *APISet
 }
 
-func resRender(res *http.ResponseWriter, rid *string, feed *FeedMeta, body *pointapi.PostList) {
-	result, err := renderFeed(feed, body.Posts)
+func resRender(res *http.ResponseWriter, job *Job) {
+	result, err := makeFeed(job)
 	if err != nil {
 		log.Printf("[ERROR] Failed to parse point response: %s\n", err)
 		(*res).WriteHeader(500)
 		return
 	}
+	feed, err := xml.Marshal(result)
+	if err != nil {
+		log.Printf("[ERROR] Failed to render XML: %s\n", err)
+		(*res).WriteHeader(500)
+		return
+	}
 	(*res).Header().Set("Content-Type", "application/atom+xml; charset=utf-8")
-	(*res).Header().Set("Request-Id", *rid)
-	fmt.Fprintln(*res, string(result))
+	(*res).Header().Set("Request-Id", *job.Rid)
+	fmt.Fprintln(*res, string(feed))
 }
 
 func rootHandler(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, "https://github.com/etw/pointfeed/blob/develop/README.md")
 }
 
-func allHandler(api *pointapi.PointAPI) func(http.ResponseWriter, *http.Request) {
+func allHandler(api *APISet) func(http.ResponseWriter, *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
 		var before int
 		params := req.URL.Query()
@@ -72,7 +71,7 @@ func allHandler(api *pointapi.PointAPI) func(http.ResponseWriter, *http.Request)
 			before = 0
 		}
 
-		body, err := api.GetAll(before)
+		body, err := api.Point.GetAll(before)
 		if err != nil {
 			log.Printf("[ERROR] {%s} Failed to get all posts: %s\n", *rid, err)
 			res.WriteHeader(500)
@@ -85,11 +84,18 @@ func allHandler(api *pointapi.PointAPI) func(http.ResponseWriter, *http.Request)
 			Href:  "https://point.im/all",
 		}
 
-		resRender(&res, rid, &feed, body)
+		job := Job{
+			Rid:  rid,
+			Meta: &feed,
+			Data: body,
+			API:  api,
+		}
+
+		resRender(&res, &job)
 	}
 }
 
-func tagsHandler(api *pointapi.PointAPI) func(http.ResponseWriter, *http.Request) {
+func tagsHandler(api *APISet) func(http.ResponseWriter, *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
 		var before int
 		params := req.URL.Query()
@@ -121,7 +127,7 @@ func tagsHandler(api *pointapi.PointAPI) func(http.ResponseWriter, *http.Request
 			return
 		}
 
-		body, err := api.GetTags(before, tags)
+		body, err := api.Point.GetTags(before, tags)
 		if err != nil {
 			log.Printf("[ERROR] {%s} Failed to get tagged posts: %s\n", *rid, err)
 			res.WriteHeader(500)
@@ -135,6 +141,13 @@ func tagsHandler(api *pointapi.PointAPI) func(http.ResponseWriter, *http.Request
 			Href:  fmt.Sprintf("https://point.im/?tag=%s", strings.Join(tags, "&tag=")),
 		}
 
-		resRender(&res, rid, &feed, body)
+		job := Job{
+			Rid:  rid,
+			Meta: &feed,
+			Data: body,
+			API:  api,
+		}
+
+		resRender(&res, &job)
 	}
 }

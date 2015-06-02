@@ -1,2 +1,3 @@
-/src
 /pointfeed
+/src/*
+!/src/gelbooru

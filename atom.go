@@ -1,51 +1,44 @@
 package main
 
 import (
-	"encoding/xml"
 	"errors"
 	"fmt"
-	"html"
-	"strings"
+	"log"
 	"time"
 
-	"golang.org/x/tools/blog/atom"
-
 	"github.com/etw/pointapi"
+	"golang.org/x/tools/blog/atom"
 )
 
 const maxtitle = 96
 
-func renderPost(p *string) (*string, error) {
-	r := strings.Replace(*p, "\n", "<br>", -1)
-	return &r, nil
-}
-
-func makeEntry(e *pointapi.PostMeta) (*atom.Entry, error) {
+func makeEntry(e *pointapi.PostMeta, api *APISet) (*atom.Entry, error) {
 	var title string
+
+	log.Printf("[DEBUG] Got post; id: %s, author: %s, files: %d\n", e.Post.Id, e.Post.Author.Login, len(e.Post.Files))
 
 	person := atom.Person{
 		Name: e.Post.Author.Login,
 		URI:  fmt.Sprintf("https://%s.point.im/", e.Post.Author.Login),
 	}
 
-	escPost := html.EscapeString(e.Post.Text)
-	htmlPost, err := renderPost(&escPost)
+	htmlPost, err := renderPost(&e.Post, api)
 	if err != nil {
 		return nil, errors.New("Couldn't render post in HTML")
 	}
 
 	post := atom.Text{
 		Type: "html",
-		Body: *htmlPost,
+		Body: htmlPost,
 	}
 
-	nl := strings.Index(e.Post.Text, "\n")
-	if nl < 0 && len(e.Post.Text) <= maxtitle {
-		title = e.Post.Text
-	} else if nl >= 0 && nl <= maxtitle {
-		title = e.Post.Text[:nl]
+	runestr := []rune(e.Post.Text)
+	nl := findNl(runestr)
+
+	if nl > maxtitle || (nl < 0 && len(runestr) > maxtitle) {
+		title = fmt.Sprintf("%s...", string(runestr[:(maxtitle-3)]))
 	} else {
-		title = fmt.Sprintf("%s...", e.Post.Text[:(maxtitle-3)])
+		title = string(runestr)
 	}
 
 	entry := atom.Entry{
@@ -65,36 +58,37 @@ func makeEntry(e *pointapi.PostMeta) (*atom.Entry, error) {
 	return &entry, nil
 }
 
-func renderFeed(f *FeedMeta, p []pointapi.PostMeta) ([]byte, error) {
+func makeFeed(job *Job) (*atom.Feed, error) {
+	//f *FeedMeta, p []pointapi.PostMeta
 	var posts []*atom.Entry
 	var timestamp atom.TimeStr
 
-	for i := range p {
-		entry, err := makeEntry(&p[i])
+	for i := range job.Data.Posts {
+		entry, err := makeEntry(&job.Data.Posts[i], job.API)
 		if err != nil {
 			return nil, err
 		}
 		posts = append(posts, entry)
 	}
 
-	if len(p) > 0 {
-		timestamp = atom.Time(p[0].Post.Created)
+	if len(job.Data.Posts) > 0 {
+		timestamp = atom.Time(job.Data.Posts[0].Post.Created)
 	} else {
 		timestamp = atom.Time(time.Now())
 	}
 
 	feed := atom.Feed{
-		Title: f.Title,
-		ID:    f.ID,
+		Title: job.Meta.Title,
+		ID:    job.Meta.ID,
 		Link: []atom.Link{
 			atom.Link{
 				Rel:  "alternate",
-				Href: f.Href,
+				Href: job.Meta.Href,
 			},
 		},
 		Updated: timestamp,
 		Entry:   posts,
 	}
 
-	return xml.Marshal(feed)
+	return &feed, nil
 }
