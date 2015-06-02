@@ -48,7 +48,7 @@ func makeEntry(e *pointapi.PostMeta) (*atom.Entry, error) {
 
 	entry := atom.Entry{
 		Title: title,
-		ID:    fmt.Sprintf("%d", e.Uid),
+		ID:    fmt.Sprintf("https://point.im/%s", e.Post.Id),
 		Link: []atom.Link{
 			atom.Link{
 				Rel:  "alternate",
@@ -88,6 +88,10 @@ func makeFeed(job *Job) (*atom.Feed, error) {
 			atom.Link{
 				Rel:  "alternate",
 				Href: job.Meta.Href,
+			},
+			atom.Link{
+				Rel:  "self",
+				Href: job.Meta.Self,
 			},
 		},
 		Updated: timestamp,

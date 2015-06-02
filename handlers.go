@@ -18,6 +18,7 @@ type FeedMeta struct {
 	Title string
 	ID    string
 	Href  string
+	Self  string
 }
 
 type Job struct {
@@ -105,8 +106,9 @@ func allHandler(res http.ResponseWriter, req *http.Request) {
 
 	job.Meta = FeedMeta{
 		Title: "All posts",
-		ID:    "all",
+		ID:    "https://point.im/all",
 		Href:  "https://point.im/all",
+		Self:  fmt.Sprintf("http://%s%s", req.Host, req.URL.Path),
 	}
 
 	for has_next && len(job.Data) < job.MinPosts {
@@ -150,8 +152,9 @@ func tagsHandler(res http.ResponseWriter, req *http.Request) {
 
 	job.Meta = FeedMeta{
 		Title: fmt.Sprintf("Tagged posts (%s)", strings.Join(tags, ", ")),
-		ID:    fmt.Sprintf("tags:%s", strings.Join(tags, ",")),
+		ID:    fmt.Sprintf("https://point.im/?tag=%s", strings.Join(tags, "&tag=")),
 		Href:  fmt.Sprintf("https://point.im/?tag=%s", strings.Join(tags, "&tag=")),
+		Self:  fmt.Sprintf("http://%s%s?tag=%s", req.Host, req.URL.Path, strings.Join(tags, "&tag=")),
 	}
 
 	for has_next && len(job.Data) < job.MinPosts {
