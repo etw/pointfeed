@@ -51,8 +51,8 @@ func urlHttps(u *url.URL) {
 
 func formatFiles(f []string) string {
 	var str []string
-	for file, _ := range f {
-		str = append(str, fmt.Sprintf("![%s](%s)", file, file))
+	for i, _ := range f {
+		str = append(str, fmt.Sprintf("![%s](%s)", f[i], f[i]))
 	}
 	return strings.Join(str, "\n")
 }
