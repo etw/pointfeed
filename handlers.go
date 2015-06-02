@@ -1,10 +1,12 @@
 package main
 
 import (
+	"crypto/rand"
 	"encoding/xml"
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -19,27 +21,28 @@ type FeedMeta struct {
 }
 
 type Job struct {
-	Rid  *string
-	Meta *FeedMeta
-	Data *pointapi.PostList
-	API  *APISet
+	Rid     string
+	Meta    FeedMeta
+	Data    *pointapi.PostList
+	Before  int
+	MinSize int
 }
 
 func resRender(res *http.ResponseWriter, job *Job) {
 	result, err := makeFeed(job)
 	if err != nil {
-		log.Printf("[ERROR] {%s} Failed to parse point response: %s\n", *job.Rid, err)
+		log.Printf("[ERROR] {%s} Failed to parse point response: %s\n", job.Rid, err)
 		(*res).WriteHeader(500)
 		return
 	}
 	feed, err := xml.Marshal(result)
 	if err != nil {
-		log.Printf("[ERROR] {%s} Failed to render XML: %s\n", *job.Rid, err)
+		log.Printf("[ERROR] {%s} Failed to render XML: %s\n", job.Rid, err)
 		(*res).WriteHeader(500)
 		return
 	}
 	(*res).Header().Set("Content-Type", "application/atom+xml; charset=utf-8")
-	(*res).Header().Set("Request-Id", *job.Rid)
+	(*res).Header().Set("Request-Id", job.Rid)
 	fmt.Fprintln(*res, string(feed))
 }
 
@@ -47,107 +50,92 @@ func rootHandler(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, "https://github.com/etw/pointfeed/blob/develop/README.md")
 }
 
-func allHandler(api *APISet) func(http.ResponseWriter, *http.Request) {
-	return func(res http.ResponseWriter, req *http.Request) {
-		var before int
-		params := req.URL.Query()
+func makeJob(p url.Values) (Job, error) {
+	var (
+		job Job
+		err error
+		rid = make([]byte, 8)
+	)
 
-		rid, err := getRid()
-		if err != nil {
-			res.WriteHeader(500)
-			return
-		}
-		log.Printf("[INFO] {%s} %s %s\n", *rid, req.Method, req.RequestURI)
-
-		b, ok := params["before"]
-		if ok {
-			before, err = strconv.Atoi(b[0])
-			if err != nil {
-				log.Printf("[WARN] {%s} Couldn't parse 'before' param: %s\n", *rid, err)
-				res.WriteHeader(400)
-				return
-			}
-		} else {
-			before = 0
-		}
-
-		body, err := api.Point.GetAll(before)
-		if err != nil {
-			log.Printf("[ERROR] {%s} Failed to get all posts: %s\n", *rid, err)
-			res.WriteHeader(500)
-			return
-		}
-
-		feed := FeedMeta{
-			Title: "All posts",
-			ID:    "all",
-			Href:  "https://point.im/all",
-		}
-
-		job := Job{
-			Rid:  rid,
-			Meta: &feed,
-			Data: body,
-			API:  api,
-		}
-
-		resRender(&res, &job)
+	_, err = rand.Read(rid)
+	if err != nil {
+		log.Println("[Error] {%s} Couldn't generate request id: %s", err)
+		return job, err
 	}
+	job.Rid = fmt.Sprintf("%x", rid)
+
+	b, ok := p["before"]
+	if ok {
+		job.Before, err = strconv.Atoi(b[0])
+		if err != nil {
+			log.Printf("[WARN] {%s} Couldn't parse 'before' param: %s\n", job.Rid, err)
+			return job, err
+		}
+	} else {
+		job.Before = 0
+	}
+	return job, nil
 }
 
-func tagsHandler(api *APISet) func(http.ResponseWriter, *http.Request) {
-	return func(res http.ResponseWriter, req *http.Request) {
-		var before int
-		params := req.URL.Query()
-		tags := params["tag"]
+func allHandler(res http.ResponseWriter, req *http.Request) {
+	var params = req.URL.Query()
 
-		rid, err := getRid()
-		if err != nil {
-			res.WriteHeader(500)
-			return
-		}
-		log.Printf("[INFO] {%s} %s %s\n", *rid, req.Method, req.RequestURI)
-
-		b, ok := params["before"]
-		if ok {
-			before, err = strconv.Atoi(b[0])
-			if err != nil {
-				log.Printf("[WARN] {%s} Failed parse before param: %s\n", *rid, err)
-				res.WriteHeader(500)
-				return
-			}
-		} else {
-			before = 0
-		}
-
-		if len(tags) < 1 {
-			log.Printf("[WARN] {%s} At least one tag is needed\n", *rid)
-			res.WriteHeader(400)
-			fmt.Fprintln(res, "At least one tag is needed")
-			return
-		}
-
-		body, err := api.Point.GetTags(before, tags)
-		if err != nil {
-			log.Printf("[ERROR] {%s} Failed to get tagged posts: %s\n", *rid, err)
-			res.WriteHeader(500)
-			return
-		}
-
-		sort.Strings(tags)
-		feed := FeedMeta{
-			Title: fmt.Sprintf("Tagged posts (%s)", strings.Join(tags, ", ")),
-			ID:    fmt.Sprintf("tags:%s", strings.Join(tags, ",")),
-			Href:  fmt.Sprintf("https://point.im/?tag=%s", strings.Join(tags, "&tag=")),
-		}
-
-		job := Job{
-			Rid:  rid,
-			Meta: &feed,
-			Data: body,
-			API:  api,
-		}
-
-		resRender(&res, &job)
+	job, err := makeJob(params)
+	if err != nil {
+		res.WriteHeader(500)
+		return
 	}
+	log.Printf("[INFO] {%s} %s %s\n", job.Rid, req.Method, req.RequestURI)
+
+	job.Data, err = api.Point.GetAll(job.Before)
+	if err != nil {
+		log.Printf("[ERROR] {%s} Failed to get all posts: %s\n", job.Rid, err)
+		res.WriteHeader(500)
+		return
+	}
+
+	job.Meta = FeedMeta{
+		Title: "All posts",
+		ID:    "all",
+		Href:  "https://point.im/all",
+	}
+
+	resRender(&res, &job)
+}
+
+func tagsHandler(res http.ResponseWriter, req *http.Request) {
+	var params = req.URL.Query()
+
+	job, err := makeJob(params)
+	if err != nil {
+		res.WriteHeader(500)
+		return
+	}
+	log.Printf("[INFO] {%s} %s %s\n", job.Rid, req.Method, req.RequestURI)
+
+	tags := params["tag"]
+	sort.Strings(tags)
+
+	if len(tags) < 1 {
+		log.Printf("[WARN] {%s} At least one tag is needed\n", job.Rid)
+		res.WriteHeader(400)
+		fmt.Fprintln(res, "At least one tag is needed")
+		return
+	}
+
+	job.Data, err = api.Point.GetTags(job.Before, tags)
+	if err != nil {
+		log.Printf("[ERROR] {%s} Failed to get tagged posts: %s\n", job.Rid, err)
+		res.WriteHeader(500)
+		return
+	}
+
+	job.Meta = FeedMeta{
+		Title: fmt.Sprintf("Tagged posts (%s)", strings.Join(tags, ", ")),
+		ID:    fmt.Sprintf("tags:%s", strings.Join(tags, ",")),
+		Href:  fmt.Sprintf("https://point.im/?tag=%s", strings.Join(tags, "&tag=")),
+	}
+
+	resRender(&res, &job)
+
 }

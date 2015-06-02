@@ -8,19 +8,29 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/etw/gelbooru"
+	"github.com/etw/gobooru"
 	"github.com/etw/pointapi"
 	"golang.org/x/net/proxy"
+
+	_ "net/http/pprof"
 )
 
 type APISet struct {
 	Point    *pointapi.API
-	Gelbooru *gelbooru.API
+	Gelbooru *gobooru.API
 }
 
+var (
+	api *APISet
+)
+
 func main() {
-	var purl, host, port string
-	var auth string
+	var (
+		purl string // Proxy URL
+		host string // Listen host
+		port string // Listen port
+		auth string // Authentication token
+	)
 
 	flag.StringVar(&purl, "proxy", "", "SOCKS5 proxy URI (e.g socks5://localhost:9050/)")
 	flag.StringVar(&host, "host", "localhost", "Interface to listen")
@@ -61,14 +71,14 @@ func main() {
 		Transport: trans,
 	}
 
-	apiset := &APISet{
+	api = &APISet{
 		Point:    pointapi.New(&client, &auth),
-		Gelbooru: gelbooru.New(&client),
+		Gelbooru: gobooru.New(&client, gobooru.GbFmt),
 	}
 
 	http.HandleFunc("/", rootHandler)
-	http.HandleFunc("/feed/all", allHandler(apiset))
-	http.HandleFunc("/feed/tags", tagsHandler(apiset))
+	http.HandleFunc("/feed/all", allHandler)
+	http.HandleFunc("/feed/tags", tagsHandler)
 
 	bind := fmt.Sprintf("%s:%s", host, port)
 	log.Printf("[INFO] Listening on %s\n", bind)

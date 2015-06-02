@@ -10,9 +10,9 @@ import (
 	"golang.org/x/tools/blog/atom"
 )
 
-const maxtitle = 96
+const maxTitle = 96
 
-func makeEntry(e *pointapi.PostMeta, api *APISet) (*atom.Entry, error) {
+func makeEntry(e *pointapi.PostMeta) (*atom.Entry, error) {
 	var title string
 
 	log.Printf("[DEBUG] Got post; id: %s, author: %s, files: %d\n", e.Post.Id, e.Post.Author.Login, len(e.Post.Files))
@@ -22,7 +22,7 @@ func makeEntry(e *pointapi.PostMeta, api *APISet) (*atom.Entry, error) {
 		URI:  fmt.Sprintf("https://%s.point.im/", e.Post.Author.Login),
 	}
 
-	htmlPost, err := renderPost(&e.Post, api)
+	htmlPost, err := renderPost(&e.Post)
 	if err != nil {
 		return nil, errors.New("Couldn't render post in HTML")
 	}
@@ -35,9 +35,9 @@ func makeEntry(e *pointapi.PostMeta, api *APISet) (*atom.Entry, error) {
 	runestr := []rune(e.Post.Text)
 	nl := findNl(runestr)
 
-	if nl > maxtitle || (nl < 0 && len(runestr) > maxtitle) {
-		title = fmt.Sprintf("%s...", string(runestr[:(maxtitle-3)]))
-	} else if nl >= 0 && nl <= maxtitle {
+	if nl > maxTitle || (nl < 0 && len(runestr) > maxTitle) {
+		title = fmt.Sprintf("%s...", string(runestr[:(maxTitle-3)]))
+	} else if nl >= 0 && nl <= maxTitle {
 		title = string(runestr[:nl])
 	} else {
 		title = string(runestr)
@@ -62,12 +62,11 @@ func makeEntry(e *pointapi.PostMeta, api *APISet) (*atom.Entry, error) {
 }
 
 func makeFeed(job *Job) (*atom.Feed, error) {
-	//f *FeedMeta, p []pointapi.PostMeta
 	var posts []*atom.Entry
 	var timestamp atom.TimeStr
 
 	for i := range job.Data.Posts {
-		entry, err := makeEntry(&job.Data.Posts[i], job.API)
+		entry, err := makeEntry(&job.Data.Posts[i])
 		if err != nil {
 			return nil, err
 		}
