@@ -21,12 +21,18 @@ type FeedMeta struct {
 	Self  string
 }
 
+type Filter struct {
+	Users []string
+	Tags  []string
+}
+
 type Job struct {
-	Rid      string
-	Meta     FeedMeta
-	Data     []pointapi.PostMeta
-	Before   int
-	MinPosts int
+	Rid       string
+	Meta      FeedMeta
+	Data      []pointapi.PostMeta
+	Before    int
+	MinPosts  int
+	Blacklist *Filter
 }
 
 func resRender(res *http.ResponseWriter, job *Job) {
@@ -55,8 +61,11 @@ func rootHandler(res http.ResponseWriter, req *http.Request) {
 func makeJob(p url.Values) (Job, error) {
 	var (
 		job Job
+		bl  Filter
 		err error
-		rid = make([]byte, 8)
+
+		rid     = make([]byte, 8)
+		have_bl = false
 	)
 
 	_, err = rand.Read(rid)
@@ -86,6 +95,24 @@ func makeJob(p url.Values) (Job, error) {
 		}
 	} else {
 		job.MinPosts = 20
+	}
+
+	nu, ok := p["nouser"]
+	if ok {
+		bl.Users = nu
+		have_bl = true
+	}
+
+	nt, ok := p["notag"]
+	if ok {
+		bl.Tags = nt
+		have_bl = true
+	}
+
+	if have_bl {
+		job.Blacklist = &bl
+	} else {
+		job.Blacklist = nil
 	}
 
 	return job, nil
@@ -120,7 +147,7 @@ func allHandler(res http.ResponseWriter, req *http.Request) {
 		}
 
 		has_next = data.HasNext
-		job.Data = append(job.Data, data.Posts...)
+		job.Data = append(job.Data, filterPosts(data.Posts, job.Blacklist)...)
 		log.Printf("[DEBUG] {%s} We have %d posts, need at least %d\n", job.Rid, len(job.Data), job.MinPosts)
 	}
 
@@ -166,7 +193,7 @@ func tagsHandler(res http.ResponseWriter, req *http.Request) {
 		}
 
 		has_next = data.HasNext
-		job.Data = append(job.Data, data.Posts...)
+		job.Data = append(job.Data, filterPosts(data.Posts, job.Blacklist)...)
 		log.Printf("[DEBUG] {%s} We have %d posts, need at least %d\n", job.Rid, len(job.Data), job.MinPosts)
 	}
 
