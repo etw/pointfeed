@@ -35,12 +35,14 @@ func main() {
 		host string // Listen host
 		port string // Listen port
 		auth string // Authentication token
+		ddir string // Data directory
 	)
 
 	flag.StringVar(&purl, "proxy", "", "SOCKS5 proxy URI (e.g socks5://localhost:9050/)")
 	flag.StringVar(&host, "host", "localhost", "Interface to listen")
 	flag.StringVar(&port, "port", "8000", "Port to listen")
 	flag.StringVar(&auth, "auth", "", "Authentication token")
+	flag.StringVar(&ddir, "data", ".", "Data directory")
 	flag.Parse()
 
 	if len(os.Getenv("HOST")) > 0 && len(os.Getenv("PORT")) > 0 {
@@ -51,7 +53,7 @@ func main() {
 
 	if len(os.Getenv("POINT_AUTH")) > 0 {
 		auth = os.Getenv("POINT_AUTH")
-		log.Println("[INFO] Got token fron environment variable")
+		log.Println("[INFO] Got token from environment variable")
 	}
 
 	proxyuri, err := url.Parse(purl)
@@ -81,7 +83,12 @@ func main() {
 		Gelbooru: gobooru.New(&client, gobooru.GbFmt),
 	}
 
-	rmraw, err := ioutil.ReadFile(readme)
+	if len(os.Getenv("DATA_DIR")) > 0 {
+		ddir = os.Getenv("DATA_DIR")
+		log.Println("[INFO] Got data dir from environment variable")
+	}
+	rmpath := fmt.Sprintf("%s/%s", ddir, readme)
+	rmraw, err := ioutil.ReadFile(rmpath)
 	if err != nil {
 		log.Fatalf("[FATAL] Couldn't read %s\n", readme)
 	}
