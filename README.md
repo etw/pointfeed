@@ -1,6 +1,8 @@
 ## Feed прокси для поинтопараши
 
-Сообщения об ошибках и пожелания можно оставлять [тут](https://github.com/etw/pointfeed/issues).
+[Багтрекер](https://github.com/etw/pointfeed/issues)
+
+[Исходники](https://github.com/etw/pointfeed/)
 
 ### Работающие фиды:
 

@@ -17,16 +17,14 @@ import (
 	_ "net/http/pprof"
 )
 
-const readme = "README.md"
-
 type APISet struct {
 	Point    *pointapi.API
 	Gelbooru *gobooru.API
 }
 
 var (
-	rmf []byte
-	api *APISet
+	readme []byte
+	api    *APISet
 )
 
 func main() {
@@ -87,12 +85,12 @@ func main() {
 		ddir = os.Getenv("DATA_DIR")
 		log.Println("[INFO] Got data dir from environment variable")
 	}
-	rmpath := fmt.Sprintf("%s/%s", ddir, readme)
-	rmraw, err := ioutil.ReadFile(rmpath)
-	if err != nil {
-		log.Fatalf("[FATAL] Couldn't read %s\n", readme)
+
+	if rmraw, err := ioutil.ReadFile(fmt.Sprintf("%s/README.md", ddir)); err != nil {
+		log.Fatalf("[FATAL] Couldn't read README.md\n")
+	} else {
+		readme = blackfriday.MarkdownCommon(rmraw)
 	}
-	rmf = blackfriday.MarkdownCommon(rmraw)
 
 	http.HandleFunc("/", rootHandler)
 	http.HandleFunc("/feed/all", allHandler)
