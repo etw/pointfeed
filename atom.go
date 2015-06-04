@@ -24,8 +24,7 @@ func makeEntry(e *pointapi.PostMeta) (*atom.Entry, error) {
 		URI:  fmt.Sprintf("https://%s.point.im/", e.Post.Author.Login),
 	}
 
-	err := renderPost(&body, &e.Post)
-	if err != nil {
+	if renderPost(&body, &e.Post) != nil {
 		return nil, errors.New("Couldn't render post")
 	}
 	defer body.Reset()
@@ -68,11 +67,11 @@ func makeFeed(job *Job) (*atom.Feed, error) {
 	var timestamp atom.TimeStr
 
 	for i := range job.Data {
-		entry, err := makeEntry(&job.Data[i])
-		if err != nil {
+		if entry, err := makeEntry(&job.Data[i]); err != nil {
 			return nil, err
+		} else {
+			posts = append(posts, entry)
 		}
-		posts = append(posts, entry)
 	}
 
 	if len(job.Data) > 0 {

@@ -190,5 +190,4 @@ func tagsHandler(res http.ResponseWriter, req *http.Request) {
 	}
 
 	resRender(&res, &job)
-
 }

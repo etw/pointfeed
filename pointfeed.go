@@ -9,8 +9,9 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/etw/gobooru"
-	"github.com/etw/pointapi"
+	booru "github.com/etw/gobooru"
+	point "github.com/etw/pointapi"
+
 	"github.com/russross/blackfriday"
 	"golang.org/x/net/proxy"
 
@@ -18,8 +19,8 @@ import (
 )
 
 type APISet struct {
-	Point    *pointapi.API
-	Gelbooru *gobooru.API
+	Point    *point.API
+	Gelbooru *booru.GbAPI
 }
 
 var (
@@ -34,6 +35,8 @@ func main() {
 		port string // Listen port
 		auth string // Authentication token
 		ddir string // Data directory
+
+		socks proxy.Dialer
 	)
 
 	flag.StringVar(&purl, "proxy", "", "SOCKS5 proxy URI (e.g socks5://localhost:9050/)")
@@ -54,17 +57,15 @@ func main() {
 		log.Println("[INFO] Got token from environment variable")
 	}
 
-	proxyuri, err := url.Parse(purl)
-	if err != nil {
+	if proxyuri, err := url.Parse(purl); err != nil {
 		log.Fatalf("[FATAL] %s is invalid URI\n", purl)
-	}
-
-	socks, err := proxy.FromURL(proxyuri, proxy.Direct)
-	if err != nil {
-		log.Println("[WARN] Fallback to direct connection")
-		socks = proxy.Direct
 	} else {
-		log.Printf("[INFO] Using proxy %s\n", purl)
+		if socks, err = proxy.FromURL(proxyuri, proxy.Direct); err != nil {
+			log.Println("[WARN] Fallback to direct connection")
+			socks = proxy.Direct
+		} else {
+			log.Printf("[INFO] Using proxy %s\n", purl)
+		}
 	}
 
 	trans := &http.Transport{
@@ -77,8 +78,8 @@ func main() {
 	}
 
 	api = &APISet{
-		Point:    pointapi.New(&client, &auth),
-		Gelbooru: gobooru.New(&client, gobooru.GbFmt),
+		Point:    point.New(&client, point.POINTIM, &auth),
+		Gelbooru: booru.NewGb(&client, booru.GELBOORU),
 	}
 
 	if len(os.Getenv("DATA_DIR")) > 0 {
