@@ -1,8 +1,35 @@
 package main
 
 import (
+	"log"
+
 	"github.com/etw/pointapi"
 )
+
+const (
+	FATAL = 0
+	ERROR = 1
+	WARN  = 2
+	INFO  = 3
+	DEBUG = 4
+)
+
+func logger(l int, s interface{}) {
+	if l <= loglvl {
+		switch l {
+		case FATAL:
+			log.Fatalf("[FATAL] %s\n", s)
+		case ERROR:
+			log.Printf("[ERROR] %s\n", s)
+		case WARN:
+			log.Printf("[WARN] %s\n", s)
+		case INFO:
+			log.Printf("[INFO] %s\n", s)
+		case DEBUG:
+			log.Printf("[DEBUG] %s\n", s)
+		}
+	}
+}
 
 func findNl(str []rune) int {
 	for i, c := range str {

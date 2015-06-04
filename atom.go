@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/etw/pointapi"
@@ -13,11 +12,11 @@ import (
 
 const maxTitle = 96
 
-func makeEntry(e *pointapi.PostMeta) (*atom.Entry, error) {
+func makeEntry(e *pointapi.PostMeta, job *Job) (*atom.Entry, error) {
 	var title string
 	var body bytes.Buffer
 
-	log.Printf("[DEBUG] Got post; id: %s, author: %s, files: %d\n", e.Post.Id, e.Post.Author.Login, len(e.Post.Files))
+	logger(DEBUG, fmt.Sprintf("{%s} Got post; id: %s, author: %s, files: %d", job.Rid, e.Post.Id, e.Post.Author.Login, len(e.Post.Files)))
 
 	person := atom.Person{
 		Name: e.Post.Author.Login,
@@ -67,7 +66,7 @@ func makeFeed(job *Job) (*atom.Feed, error) {
 	var timestamp atom.TimeStr
 
 	for i := range job.Data {
-		if entry, err := makeEntry(&job.Data[i]); err != nil {
+		if entry, err := makeEntry(&job.Data[i], job); err != nil {
 			return nil, err
 		} else {
 			posts = append(posts, entry)

@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/xml"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"sort"
@@ -37,10 +36,10 @@ type Job struct {
 
 func resRender(res *http.ResponseWriter, job *Job) {
 	if feed, err := makeFeed(job); err != nil {
-		log.Printf("[ERROR] {%s} Failed to parse point response: %s\n", job.Rid, err)
+		logger(ERROR, fmt.Sprintf("{%s} Failed to parse point response: %s", job.Rid, err))
 		(*res).WriteHeader(500)
 	} else if result, err := xml.Marshal(feed); err != nil {
-		log.Printf("[ERROR] {%s} Failed to render XML: %s\n", job.Rid, err)
+		logger(ERROR, fmt.Sprintf("{%s} Failed to render XML: %s", job.Rid, err))
 		(*res).WriteHeader(500)
 	} else {
 		(*res).Header().Set("Content-Type", "application/atom+xml; charset=utf-8")
@@ -62,7 +61,7 @@ func makeJob(p url.Values) (Job, error) {
 
 	rid := make([]byte, 8)
 	if _, err := rand.Read(rid); err != nil {
-		log.Println("[Error] {0000000000000000} Couldn't generate request id: %s", err)
+		logger(ERROR, fmt.Sprintf("{0000000000000000} Couldn't generate request id: %s", err))
 		return job, err
 	} else {
 		job.Rid = fmt.Sprintf("%x", rid)
@@ -71,7 +70,7 @@ func makeJob(p url.Values) (Job, error) {
 	if val, ok := p["before"]; ok {
 		var err error
 		if job.Before, err = strconv.Atoi(val[0]); err != nil {
-			log.Printf("[WARN] {%s} Couldn't parse 'before' param: %s\n", job.Rid, err)
+			logger(WARN, fmt.Sprintf("{%s} Couldn't parse 'before' param: %s", job.Rid, err))
 			return job, err
 		}
 	} else {
@@ -81,7 +80,7 @@ func makeJob(p url.Values) (Job, error) {
 	if val, ok := p["minposts"]; ok {
 		var err error
 		if job.MinPosts, err = strconv.Atoi(val[0]); err != nil {
-			log.Printf("[WARN] {%s} Couldn't parse 'minposts' param: %s\n", job.Rid, err)
+			logger(WARN, fmt.Sprintf("{%s} Couldn't parse 'minposts' param: %s", job.Rid, err))
 			return job, err
 		}
 	} else {
@@ -111,7 +110,7 @@ func allHandler(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(500)
 		return
 	}
-	log.Printf("[INFO] {%s} %s %s\n", job.Rid, req.Method, req.RequestURI)
+	logger(INFO, fmt.Sprintf("{%s} %s %s", job.Rid, req.Method, req.RequestURI))
 
 	job.Meta = FeedMeta{
 		Title: "All posts",
@@ -124,9 +123,9 @@ func allHandler(res http.ResponseWriter, req *http.Request) {
 	for has_next && len(job.Data) < job.MinPosts {
 		var data *pointapi.PostList
 
-		log.Printf("[DEBUG] {%s} Requesting posts before: %d\n", job.Rid, start)
-		if data, err = api.Point.GetAll(start); err != nil {
-			log.Printf("[ERROR] {%s} Failed to get all posts: %s\n", job.Rid, err)
+		logger(DEBUG, fmt.Sprintf("{%s} Requesting posts before: %d", job.Rid, start))
+		if data, err = apiset.Point.GetAll(start); err != nil {
+			logger(ERROR, fmt.Sprintf("{%s} Failed to get all posts: %s", job.Rid, err))
 			res.WriteHeader(500)
 			return
 		}
@@ -135,7 +134,7 @@ func allHandler(res http.ResponseWriter, req *http.Request) {
 		has_next = data.HasNext
 
 		job.Data = append(job.Data, filterPosts(data.Posts, job.Blacklist)...)
-		log.Printf("[DEBUG] {%s} We have %d posts, need at least %d\n", job.Rid, len(job.Data), job.MinPosts)
+		logger(DEBUG, fmt.Sprintf("{%s} We have %d posts, need at least %d", job.Rid, len(job.Data), job.MinPosts))
 	}
 
 	resRender(&res, &job)
@@ -152,13 +151,13 @@ func tagsHandler(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(500)
 		return
 	}
-	log.Printf("[INFO] {%s} %s %s\n", job.Rid, req.Method, req.RequestURI)
+	logger(INFO, fmt.Sprintf("{%s} %s %s", job.Rid, req.Method, req.RequestURI))
 
 	tags := params["tag"]
 	sort.Strings(tags)
 
 	if len(tags) < 1 {
-		log.Printf("[WARN] {%s} At least one tag is needed\n", job.Rid)
+		logger(WARN, fmt.Sprintf("{%s} At least one tag is needed", job.Rid))
 		res.WriteHeader(400)
 		fmt.Fprintln(res, "At least one tag is needed")
 		return
@@ -175,9 +174,9 @@ func tagsHandler(res http.ResponseWriter, req *http.Request) {
 	for has_next && len(job.Data) < job.MinPosts {
 		var data *pointapi.PostList
 
-		log.Printf("[DEBUG] {%s} Requesting posts before: %d\n", job.Rid, start)
-		if data, err = api.Point.GetTags(start, tags); err != nil {
-			log.Printf("[ERROR] {%s} Failed to get tagged posts: %s\n", job.Rid, err)
+		logger(DEBUG, fmt.Sprintf("{%s} Requesting posts before: %d", job.Rid, start))
+		if data, err = apiset.Point.GetTags(start, tags); err != nil {
+			logger(ERROR, fmt.Sprintf("{%s} Failed to get tagged posts: %s", job.Rid, err))
 			res.WriteHeader(500)
 			return
 		}
@@ -186,7 +185,7 @@ func tagsHandler(res http.ResponseWriter, req *http.Request) {
 		has_next = data.HasNext
 
 		job.Data = append(job.Data, filterPosts(data.Posts, job.Blacklist)...)
-		log.Printf("[DEBUG] {%s} We have %d posts, need at least %d\n", job.Rid, len(job.Data), job.MinPosts)
+		logger(DEBUG, fmt.Sprintf("{%s} We have %d posts, need at least %d", job.Rid, len(job.Data), job.MinPosts))
 	}
 
 	resRender(&res, &job)

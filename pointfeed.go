@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -25,7 +24,8 @@ type APISet struct {
 
 var (
 	readme []byte
-	api    *APISet
+	apiset *APISet
+	loglvl int
 )
 
 func main() {
@@ -44,27 +44,28 @@ func main() {
 	flag.StringVar(&port, "port", "8000", "Port to listen")
 	flag.StringVar(&auth, "auth", "", "Authentication token")
 	flag.StringVar(&ddir, "data", ".", "Data directory")
+	flag.IntVar(&loglvl, "loglevel", INFO, "Logging level [0-4]")
 	flag.Parse()
 
 	if len(os.Getenv("HOST")) > 0 && len(os.Getenv("PORT")) > 0 {
 		host = os.Getenv("HOST")
 		port = os.Getenv("PORT")
-		log.Println("[INFO] Got host:port fron environment variables")
+		logger(INFO, "Got host:port fron environment variables")
 	}
 
 	if len(os.Getenv("POINT_AUTH")) > 0 {
 		auth = os.Getenv("POINT_AUTH")
-		log.Println("[INFO] Got token from environment variable")
+		logger(INFO, "Got token from environment variable")
 	}
 
 	if proxyuri, err := url.Parse(purl); err != nil {
-		log.Fatalf("[FATAL] %s is invalid URI\n", purl)
+		logger(FATAL, fmt.Sprintf("%s is invalid URI", purl))
 	} else {
 		if socks, err = proxy.FromURL(proxyuri, proxy.Direct); err != nil {
-			log.Println("[WARN] Fallback to direct connection")
+			logger(WARN, "Falloggernlback to direct connection")
 			socks = proxy.Direct
 		} else {
-			log.Printf("[INFO] Using proxy %s\n", purl)
+			logger(INFO, fmt.Sprintf("Using proxy %s", purl))
 		}
 	}
 
@@ -77,18 +78,18 @@ func main() {
 		Transport: trans,
 	}
 
-	api = &APISet{
+	apiset = &APISet{
 		Point:    point.New(&client, point.POINTIM, &auth),
 		Gelbooru: booru.NewGb(&client, booru.GELBOORU),
 	}
 
 	if len(os.Getenv("DATA_DIR")) > 0 {
 		ddir = os.Getenv("DATA_DIR")
-		log.Println("[INFO] Got data dir from environment variable")
+		logger(INFO, "Got data dir from environment variable")
 	}
 
 	if rmraw, err := ioutil.ReadFile(fmt.Sprintf("%s/README.md", ddir)); err != nil {
-		log.Fatalf("[FATAL] Couldn't read README.md\n")
+		logger(FATAL, "Couldn't read README.md")
 	} else {
 		readme = blackfriday.MarkdownCommon(rmraw)
 	}
@@ -98,6 +99,8 @@ func main() {
 	http.HandleFunc("/feed/tags", tagsHandler)
 
 	bind := fmt.Sprintf("%s:%s", host, port)
-	log.Printf("[INFO] Listening on %s\n", bind)
-	log.Fatalln(http.ListenAndServe(bind, nil))
+	logger(INFO, fmt.Sprintf("Listening on %s\n", bind))
+	if err := http.ListenAndServe(bind, nil); err != nil {
+		logger(FATAL, err)
+	}
 }
