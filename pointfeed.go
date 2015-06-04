@@ -4,29 +4,28 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
 
-	"github.com/etw/gobooru"
-	"github.com/etw/pointapi"
+	booru "github.com/etw/gobooru"
+	point "github.com/etw/pointapi"
+
 	"github.com/russross/blackfriday"
 	"golang.org/x/net/proxy"
 
 	_ "net/http/pprof"
 )
 
-const readme = "README.md"
-
 type APISet struct {
-	Point    *pointapi.API
-	Gelbooru *gobooru.API
+	Point    *point.API
+	Gelbooru *booru.GbAPI
 }
 
 var (
-	rmf []byte
-	api *APISet
+	readme []byte
+	apiset *APISet
+	loglvl int
 )
 
 func main() {
@@ -36,6 +35,8 @@ func main() {
 		port string // Listen port
 		auth string // Authentication token
 		ddir string // Data directory
+
+		socks proxy.Dialer
 	)
 
 	flag.StringVar(&purl, "proxy", "", "SOCKS5 proxy URI (e.g socks5://localhost:9050/)")
@@ -43,30 +44,29 @@ func main() {
 	flag.StringVar(&port, "port", "8000", "Port to listen")
 	flag.StringVar(&auth, "auth", "", "Authentication token")
 	flag.StringVar(&ddir, "data", ".", "Data directory")
+	flag.IntVar(&loglvl, "loglevel", INFO, "Logging level [0-4]")
 	flag.Parse()
 
 	if len(os.Getenv("HOST")) > 0 && len(os.Getenv("PORT")) > 0 {
 		host = os.Getenv("HOST")
 		port = os.Getenv("PORT")
-		log.Println("[INFO] Got host:port fron environment variables")
+		logger(INFO, "Got host:port fron environment variables")
 	}
 
 	if len(os.Getenv("POINT_AUTH")) > 0 {
 		auth = os.Getenv("POINT_AUTH")
-		log.Println("[INFO] Got token from environment variable")
+		logger(INFO, "Got token from environment variable")
 	}
 
-	proxyuri, err := url.Parse(purl)
-	if err != nil {
-		log.Fatalf("[FATAL] %s is invalid URI\n", purl)
-	}
-
-	socks, err := proxy.FromURL(proxyuri, proxy.Direct)
-	if err != nil {
-		log.Println("[WARN] Fallback to direct connection")
-		socks = proxy.Direct
+	if proxyuri, err := url.Parse(purl); err != nil {
+		logger(FATAL, fmt.Sprintf("%s is invalid URI", purl))
 	} else {
-		log.Printf("[INFO] Using proxy %s\n", purl)
+		if socks, err = proxy.FromURL(proxyuri, proxy.Direct); err != nil {
+			logger(WARN, "Falloggernlback to direct connection")
+			socks = proxy.Direct
+		} else {
+			logger(INFO, fmt.Sprintf("Using proxy %s", purl))
+		}
 	}
 
 	trans := &http.Transport{
@@ -78,27 +78,29 @@ func main() {
 		Transport: trans,
 	}
 
-	api = &APISet{
-		Point:    pointapi.New(&client, &auth),
-		Gelbooru: gobooru.New(&client, gobooru.GbFmt),
+	apiset = &APISet{
+		Point:    point.New(&client, point.POINTIM, &auth),
+		Gelbooru: booru.NewGb(&client, booru.GELBOORU),
 	}
 
 	if len(os.Getenv("DATA_DIR")) > 0 {
 		ddir = os.Getenv("DATA_DIR")
-		log.Println("[INFO] Got data dir from environment variable")
+		logger(INFO, "Got data dir from environment variable")
 	}
-	rmpath := fmt.Sprintf("%s/%s", ddir, readme)
-	rmraw, err := ioutil.ReadFile(rmpath)
-	if err != nil {
-		log.Fatalf("[FATAL] Couldn't read %s\n", readme)
+
+	if rmraw, err := ioutil.ReadFile(fmt.Sprintf("%s/README.md", ddir)); err != nil {
+		logger(FATAL, "Couldn't read README.md")
+	} else {
+		readme = blackfriday.MarkdownCommon(rmraw)
 	}
-	rmf = blackfriday.MarkdownCommon(rmraw)
 
 	http.HandleFunc("/", rootHandler)
 	http.HandleFunc("/feed/all", allHandler)
 	http.HandleFunc("/feed/tags", tagsHandler)
 
 	bind := fmt.Sprintf("%s:%s", host, port)
-	log.Printf("[INFO] Listening on %s\n", bind)
-	log.Fatalln(http.ListenAndServe(bind, nil))
+	logger(INFO, fmt.Sprintf("Listening on %s\n", bind))
+	if err := http.ListenAndServe(bind, nil); err != nil {
+		logger(FATAL, err)
+	}
 }

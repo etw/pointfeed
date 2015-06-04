@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"html"
-	"log"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/etw/pointapi"
@@ -13,32 +13,38 @@ import (
 )
 
 func urlGelbooru(u *url.URL) *string {
-	query := u.Query()
+	var (
+		query = u.Query()
+	)
 
 	if !(u.Host == "gelbooru.com" && u.Path == "/index.php") {
 		return nil
 	}
-	v, ok := query["page"]
-	if !ok || !(v[0] == "post" && len(v) == 1) {
-		return nil
-	}
-	v, ok = query["s"]
-	if !ok || !(v[0] == "view" && len(v) == 1) {
-		return nil
-	}
-	v, ok = query["id"]
-	if !ok {
+
+	if v, ok := query["page"]; !ok || !(v[0] == "post" && len(v) == 1) {
 		return nil
 	}
 
-	p, err := api.Gelbooru.GetPicsGb(&v[0])
-	if err != nil {
-		log.Printf("[WARN] Failed to retrieve gelbooru pic %s\n", v)
+	if v, ok := query["s"]; !ok || !(v[0] == "view" && len(v) == 1) {
 		return nil
 	}
-	res := fmt.Sprintf("[](%s \"%s\")", (*p).List[0].SampleUrl, (*p).List[0].Tags)
 
-	return &res
+	if v, ok := query["id"]; !ok {
+		return nil
+	} else {
+		if val, err := strconv.Atoi(v[0]); err != nil {
+			logger(WARN, fmt.Sprintf("Failed to parse post id %s: %s", v[0], err))
+			return nil
+		} else {
+			if p, err := apiset.Gelbooru.GetByIdRaw(val); err != nil {
+				logger(WARN, fmt.Sprintf("Failed to retrieve gelbooru pic %s: %s", v, err))
+				return nil
+			} else {
+				res := fmt.Sprintf("[](%s \"%s\")", (*p).List[0].SampleUrl, (*p).List[0].Tags)
+				return &res
+			}
+		}
+	}
 }
 
 func urlHttps(u *url.URL) {
