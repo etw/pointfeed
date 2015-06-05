@@ -3,13 +3,34 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"html"
 	"net/url"
 	"strconv"
-	"strings"
+	"text/template"
 
 	"github.com/etw/pointapi"
 	"github.com/russross/blackfriday"
+)
+
+const (
+	mdHtmlFlags = 0 |
+		blackfriday.HTML_USE_XHTML |
+		blackfriday.HTML_USE_SMARTYPANTS |
+		blackfriday.HTML_SMARTYPANTS_FRACTIONS |
+		blackfriday.HTML_SMARTYPANTS_LATEX_DASHES
+
+	mdExtensions = 0 |
+		blackfriday.EXTENSION_NO_INTRA_EMPHASIS |
+		blackfriday.EXTENSION_TABLES |
+		blackfriday.EXTENSION_FENCED_CODE |
+		blackfriday.EXTENSION_AUTOLINK |
+		blackfriday.EXTENSION_STRIKETHROUGH |
+		blackfriday.EXTENSION_SPACE_HEADERS |
+		blackfriday.EXTENSION_HEADER_IDS |
+		blackfriday.EXTENSION_BACKSLASH_LINE_BREAK
+)
+
+var (
+	mdRenderer = blackfriday.HtmlRenderer(mdHtmlFlags, "", "")
 )
 
 func urlGelbooru(u *url.URL) *string {
@@ -55,16 +76,31 @@ func urlHttps(u *url.URL) {
 	return
 }
 
-func formatFiles(f []string) string {
-	var str []string
+func formatFiles(out *bytes.Buffer, f []string) {
 	for i, _ := range f {
-		str = append(str, fmt.Sprintf("![%s](%s)", f[i], f[i]))
+		var tmp []byte
+		tmp = append(tmp, []byte("![")...)
+		tmp = append(tmp, []byte(f[i])...)
+		tmp = append(tmp, []byte("](")...)
+		tmp = append(tmp, []byte(f[i])...)
+		tmp = append(tmp, []byte(")\n")...)
+		out.Write(blackfriday.MarkdownOptions(tmp, mdRenderer,
+			blackfriday.Options{Extensions: mdExtensions}))
 	}
-	return strings.Join(str, "\n")
+}
+
+func formatPost(out *bytes.Buffer, p []byte) {
+	var escPost bytes.Buffer
+
+	template.HTMLEscape(&escPost, p)
+	defer escPost.Reset()
+
+	out.Write(blackfriday.MarkdownOptions(escPost.Bytes(), mdRenderer,
+		blackfriday.Options{Extensions: mdExtensions}))
 }
 
 func renderPost(out *bytes.Buffer, p *pointapi.PostData) error {
-	rawPost := fmt.Sprintf("%s\n%s", (*p).Text, formatFiles((*p).Files))
-	out.Write(blackfriday.MarkdownCommon([]byte(html.EscapeString(rawPost))))
+	formatPost(out, []byte(p.Text))
+	formatFiles(out, p.Files)
 	return nil
 }

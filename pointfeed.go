@@ -62,7 +62,7 @@ func main() {
 		logger(FATAL, fmt.Sprintf("%s is invalid URI", purl))
 	} else {
 		if socks, err = proxy.FromURL(proxyuri, proxy.Direct); err != nil {
-			logger(WARN, "Falloggernlback to direct connection")
+			logger(WARN, "Fallback to direct connection")
 			socks = proxy.Direct
 		} else {
 			logger(INFO, fmt.Sprintf("Using proxy %s", purl))
@@ -99,7 +99,7 @@ func main() {
 	http.HandleFunc("/feed/tags", tagsHandler)
 
 	bind := fmt.Sprintf("%s:%s", host, port)
-	logger(INFO, fmt.Sprintf("Listening on %s\n", bind))
+	logger(INFO, fmt.Sprintf("Listening on %s", bind))
 	if err := http.ListenAndServe(bind, nil); err != nil {
 		logger(FATAL, err)
 	}
