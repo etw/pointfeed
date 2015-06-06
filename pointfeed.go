@@ -79,7 +79,7 @@ func main() {
 	}
 
 	apiset = &APISet{
-		Point:    point.New(&client, point.POINTIM, &auth),
+		Point:    point.New(&client, point.POINTAPI, &auth),
 		Gelbooru: booru.NewGb(&client, booru.GELBOORU),
 	}
 

@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/etw/pointapi"
+	point "github.com/etw/pointapi"
 )
 
 const (
@@ -63,8 +63,8 @@ func haveIntersec(a []string, b []string) bool {
 	return false
 }
 
-func filterPosts(l []pointapi.PostMeta, f *Filter) []pointapi.PostMeta {
-	var res []pointapi.PostMeta
+func filterPosts(l []point.PostMeta, f *Filter) []point.PostMeta {
+	var res []point.PostMeta
 	if f == nil {
 		return l
 	}

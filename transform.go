@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -28,6 +29,7 @@ const (
 		blackfriday.EXTENSION_HEADER_IDS |
 		blackfriday.EXTENSION_BACKSLASH_LINE_BREAK
 )
+	point "github.com/etw/pointapi"
 
 var (
 	mdRenderer = blackfriday.HtmlRenderer(mdHtmlFlags, "", "")
@@ -89,15 +91,12 @@ func urlHttps(u *url.URL) bool {
 }
 
 func formatFiles(out *bytes.Buffer, f []string) {
+	var tmp bytes.Buffer
 	for i, _ := range f {
-		var tmp []byte
-		tmp = append(tmp, []byte("![")...)
-		tmp = append(tmp, []byte(f[i])...)
-		tmp = append(tmp, []byte("](")...)
-		tmp = append(tmp, []byte(f[i])...)
-		tmp = append(tmp, []byte(")\n")...)
-		out.Write(blackfriday.MarkdownOptions(tmp, mdRenderer,
+		fmt.Fprintf(&tmp, "\n![%s](%s)\n", f[i], f[i])
+		out.Write(blackfriday.MarkdownOptions(tmp.Bytes(), mdRenderer,
 			blackfriday.Options{Extensions: mdExtensions}))
+		tmp.Reset()
 	}
 }
 
@@ -111,7 +110,13 @@ func formatPost(out *bytes.Buffer, p []byte) {
 		blackfriday.Options{Extensions: mdExtensions}))
 }
 
-func renderPost(out *bytes.Buffer, p *pointapi.PostData) error {
+func renderPost(out *bytes.Buffer, p *point.PostData) (e error) {
+	defer func() {
+		if r := recover(); r != nil {
+			e = errors.New(fmt.Sprintf("\n%s",r))
+		}
+	}()
+
 	formatPost(out, []byte(p.Text))
 	formatFiles(out, p.Files)
 	return nil
