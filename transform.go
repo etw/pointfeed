@@ -37,6 +37,18 @@ func urlGelbooru(u *url.URL) *string {
 	var (
 		query = u.Query()
 	)
+var secSites = []string{
+	"google.com",
+	"google.ru",
+	"github.com",
+	"point.im",
+	"juick.com",
+	"bnw.im",
+	"danbooru.donmai.us",
+	"safebooru.donmai.us",
+	"chan.sankakucomplex.com",
+	"yande.re",
+}
 
 	if !(u.Host == "gelbooru.com" && u.Path == "/index.php") {
 		return nil
@@ -68,12 +80,12 @@ func urlGelbooru(u *url.URL) *string {
 	}
 }
 
-func urlHttps(u *url.URL) {
-	if u.Scheme == "https" {
-		return
+func urlHttps(u *url.URL) bool {
+	if u.Scheme == "http" && isElem(secSites, u.Host) {
+		u.Scheme = "https"
+		return true
 	}
-	u.Scheme = "https"
-	return
+	return false
 }
 
 func formatFiles(out *bytes.Buffer, f []string) {
