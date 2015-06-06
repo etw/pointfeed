@@ -35,10 +35,6 @@ var (
 	mdRenderer = blackfriday.HtmlRenderer(mdHtmlFlags, "", "")
 )
 
-func urlGelbooru(u *url.URL) *string {
-	var (
-		query = u.Query()
-	)
 var secSites = []string{
 	"google.com",
 	"google.ru",
@@ -52,31 +48,34 @@ var secSites = []string{
 	"yande.re",
 }
 
-	if !(u.Host == "gelbooru.com" && u.Path == "/index.php") {
-		return nil
+func urlGelbooru(u *url.URL) (*string, bool) {
+	if !(u.Scheme == "http" && u.Host == "gelbooru.com" && u.Path == "/index.php") {
+		return nil, false
 	}
 
+	query := u.Query()
 	if v, ok := query["page"]; !ok || !(v[0] == "post" && len(v) == 1) {
-		return nil
+		return nil, false
 	}
-
 	if v, ok := query["s"]; !ok || !(v[0] == "view" && len(v) == 1) {
-		return nil
+		return nil, false
 	}
-
 	if v, ok := query["id"]; !ok {
-		return nil
+		return nil, false
 	} else {
 		if val, err := strconv.Atoi(v[0]); err != nil {
-			logger(WARN, fmt.Sprintf("Failed to parse post id %s: %s", v[0], err))
-			return nil
+			panic(fmt.Sprintf("Failed to parse post id %s: %s", v[0], err))
+			return nil, false
 		} else {
-			if p, err := apiset.Gelbooru.GetByIdRaw(val); err != nil {
-				logger(WARN, fmt.Sprintf("Failed to retrieve gelbooru pic %s: %s", v, err))
-				return nil
+			if p, err := apiset.Gelbooru.GetById(val); err != nil {
+				panic(fmt.Sprintf("Failed to retrieve gelbooru pic %s: %s", v, err))
 			} else {
-				res := fmt.Sprintf("[](%s \"%s\")", (*p).List[0].SampleUrl, (*p).List[0].Tags)
-				return &res
+				if tmp, err := url.Parse((*p).Sample); err != nil {
+					panic(fmt.Sprintf("Failed to parse sample url %s: %s", (*p).Sample, err))
+				} else {
+					u = tmp
+					return &(*p).Tags, true
+				}
 			}
 		}
 	}
