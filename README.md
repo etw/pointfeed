@@ -41,4 +41,8 @@ https://pointfeed-etw.rhcloud.com/feed/tags?tag=anime_art&nouser=animal-love
 * показ изображений вместо прямых ссылок на них;
 * показ изображений из постов на gelbooru.
 
+### Известные проблемы
+
+* не распознаются mailto-ссылки
+
 #### Слава BnW!

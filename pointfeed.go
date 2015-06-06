@@ -91,7 +91,8 @@ func main() {
 	if rmraw, err := ioutil.ReadFile(fmt.Sprintf("%s/README.md", ddir)); err != nil {
 		logger(FATAL, "Couldn't read README.md")
 	} else {
-		readme = blackfriday.MarkdownCommon(rmraw)
+		readme = blackfriday.MarkdownOptions(rmraw, rdRenderer,
+			blackfriday.Options{Extensions: mdExtensions})
 	}
 
 	http.HandleFunc("/", rootHandler)
