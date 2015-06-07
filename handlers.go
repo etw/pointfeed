@@ -29,7 +29,6 @@ type Job struct {
 	Rid       string
 	Meta      FeedMeta
 	Data      []point.PostMeta
-	Before    int
 	MinPosts  int
 	Blacklist *Filter
 }
@@ -78,16 +77,6 @@ func makeJob(p url.Values) (Job, error) {
 		job.Rid = fmt.Sprintf("%x", rid)
 	}
 
-	if val, ok := p["before"]; ok {
-		var err error
-		if job.Before, err = strconv.Atoi(val[0]); err != nil {
-			logger(WARN, fmt.Sprintf("{%s} Couldn't parse 'before' param: %s", job.Rid, err))
-			return job, err
-		}
-	} else {
-		job.Before = 0
-	}
-
 	if val, ok := p["minposts"]; ok {
 		var err error
 		if job.MinPosts, err = strconv.Atoi(val[0]); err != nil {
@@ -130,7 +119,7 @@ func allHandler(res http.ResponseWriter, req *http.Request) {
 		Self:  fmt.Sprintf("http://%s%s", req.Host, req.URL.Path),
 	}
 
-	start, has_next := job.Before, true
+	start, has_next := 0, true
 	for has_next && len(job.Data) < job.MinPosts {
 		var data *point.PostList
 
@@ -181,7 +170,7 @@ func tagsHandler(res http.ResponseWriter, req *http.Request) {
 		Self:  fmt.Sprintf("http://%s%s?tag=%s", req.Host, req.URL.Path, strings.Join(tags, "&tag=")),
 	}
 
-	start, has_next := job.Before, true
+	start, has_next := 0, true
 	for has_next && len(job.Data) < job.MinPosts {
 		var data *point.PostList
 
