@@ -16,7 +16,7 @@ import (
 
 const (
 	maxTitle = 96
-	chanSize = 8
+	chanSize = 20
 )
 
 type FeedMeta struct {
