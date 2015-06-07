@@ -16,20 +16,20 @@ const maxTitle = 96
 func makeEntry(p *point.PostMeta, job *Job) (*atom.Entry, error) {
 	var (
 		title string
-		body  = new(bytes.Buffer)
+		body = new(bytes.Buffer)
 	)
 
 	logger(DEBUG, fmt.Sprintf("{%s} Got post; id: %s, author: %s, files: %d", job.Rid, p.Post.Id, p.Post.Author.Login, len(p.Post.Files)))
 
-	if c, err := doGroup.Do("posts", pGet(p.Uid)); err != nil {
+	if c, err := doGroup.Do("posts", pGet(p.Post.Id)); err != nil {
 		if err := renderPost(body, &p.Post); err != nil {
 			return nil, errors.New(fmt.Sprintf("Couldn't render post: %s", err))
 		} else {
-			logger(DEBUG, fmt.Sprintf("{%s} Cache miss (uid %d, csize %d)", job.Rid, p.Uid, pCache.Len()))
-			doGroup.Do("posts", pPut(p.Uid, body.Bytes()))
+			logger(DEBUG, fmt.Sprintf("{%s} Cache miss (uid %s, csize %d)", job.Rid, p.Post.Id, pCache.Len()))
+			doGroup.Do("posts", pPut(p.Post.Id, body.Bytes()))
 		}
 	} else {
-		logger(DEBUG, fmt.Sprintf("{%s} Cache hit (uid %d, csize %d)", job.Rid, p.Uid, pCache.Len()))
+		logger(DEBUG, fmt.Sprintf("{%s} Cache hit (uid %s, csize %d)", job.Rid, p.Post.Id, pCache.Len()))
 		body.Write(c.([]byte))
 	}
 

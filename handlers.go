@@ -60,7 +60,7 @@ func cacheLister(res http.ResponseWriter, req *http.Request) {
 func cacheHandler(s *Stats) (func(res http.ResponseWriter, req *http.Request)) {
 	return func(res http.ResponseWriter, req *http.Request) {
 		res.Header().Set("Content-Type", "application/json; charset=utf-8")
-		s.renderStats(&res)
+		s.render(&res)
 	}
 }
 
