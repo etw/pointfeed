@@ -6,25 +6,28 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/etw/pointapi"
+	point "github.com/etw/pointapi"
+
 	"golang.org/x/tools/blog/atom"
 )
 
 const maxTitle = 96
 
-func makeEntry(e *pointapi.PostMeta, job *Job) (*atom.Entry, error) {
-	var title string
-	var body bytes.Buffer
+func makeEntry(p *point.PostMeta, job *Job) (*atom.Entry, error) {
+	var (
+		title string
+		body  bytes.Buffer
+	)
 
-	logger(DEBUG, fmt.Sprintf("{%s} Got post; id: %s, author: %s, files: %d", job.Rid, e.Post.Id, e.Post.Author.Login, len(e.Post.Files)))
+	logger(DEBUG, fmt.Sprintf("{%s} Got post; id: %s, author: %s, files: %d", job.Rid, p.Post.Id, p.Post.Author.Login, len(p.Post.Files)))
 
 	person := atom.Person{
-		Name: e.Post.Author.Login,
-		URI:  fmt.Sprintf("https://%s.point.im/", e.Post.Author.Login),
+		Name: p.Post.Author.Login,
+		URI:  fmt.Sprintf("https://%s.point.im/", p.Post.Author.Login),
 	}
 
-	if renderPost(&body, &e.Post) != nil {
-		return nil, errors.New("Couldn't render post")
+	if err := renderPost(&body, &p.Post); err != nil {
+		return nil, errors.New(fmt.Sprintf("Couldn't render post: %s", err))
 	}
 	defer body.Reset()
 
@@ -33,7 +36,7 @@ func makeEntry(e *pointapi.PostMeta, job *Job) (*atom.Entry, error) {
 		Body: body.String(),
 	}
 
-	runestr := []rune(e.Post.Text)
+	runestr := []rune(p.Post.Text)
 	nl := findNl(runestr)
 
 	if nl > maxTitle || (nl < 0 && len(runestr) > maxTitle) {
@@ -44,21 +47,21 @@ func makeEntry(e *pointapi.PostMeta, job *Job) (*atom.Entry, error) {
 		title = string(runestr)
 	}
 
-	entry := atom.Entry{
+	entry := &atom.Entry{
 		Title: title,
-		ID:    fmt.Sprintf("https://point.im/%s", e.Post.Id),
+		ID:    fmt.Sprintf("%s/%s", point.POINTIM, p.Post.Id),
 		Link: []atom.Link{
 			atom.Link{
 				Rel:  "alternate",
-				Href: fmt.Sprintf("https://point.im/%s", e.Post.Id),
+				Href: fmt.Sprintf("%s/%s", point.POINTIM, p.Post.Id),
 			},
 		},
-		Published: atom.Time(e.Post.Created),
-		Updated:   atom.Time(e.Post.Created),
+		Published: atom.Time(p.Post.Created),
+		Updated:   atom.Time(p.Post.Created),
 		Author:    &person,
 		Content:   &post,
 	}
-	return &entry, nil
+	return entry, nil
 }
 
 func makeFeed(job *Job) (*atom.Feed, error) {

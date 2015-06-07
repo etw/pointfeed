@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/etw/pointapi"
+	point "github.com/etw/pointapi"
 )
 
 type FeedMeta struct {
@@ -28,7 +28,7 @@ type Filter struct {
 type Job struct {
 	Rid       string
 	Meta      FeedMeta
-	Data      []pointapi.PostMeta
+	Data      []point.PostMeta
 	Before    int
 	MinPosts  int
 	Blacklist *Filter
@@ -121,7 +121,7 @@ func allHandler(res http.ResponseWriter, req *http.Request) {
 
 	start, has_next := job.Before, true
 	for has_next && len(job.Data) < job.MinPosts {
-		var data *pointapi.PostList
+		var data *point.PostList
 
 		logger(DEBUG, fmt.Sprintf("{%s} Requesting posts before: %d", job.Rid, start))
 		if data, err = apiset.Point.GetAll(start); err != nil {
@@ -172,7 +172,7 @@ func tagsHandler(res http.ResponseWriter, req *http.Request) {
 
 	start, has_next := job.Before, true
 	for has_next && len(job.Data) < job.MinPosts {
-		var data *pointapi.PostList
+		var data *point.PostList
 
 		logger(DEBUG, fmt.Sprintf("{%s} Requesting posts before: %d", job.Rid, start))
 		if data, err = apiset.Point.GetTags(start, tags); err != nil {

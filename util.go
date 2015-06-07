@@ -3,15 +3,15 @@ package main
 import (
 	"log"
 
-	"github.com/etw/pointapi"
+	point "github.com/etw/pointapi"
 )
 
 const (
-	FATAL = 0
-	ERROR = 1
-	WARN  = 2
-	INFO  = 3
-	DEBUG = 4
+	FATAL = iota
+	ERROR
+	WARN
+	INFO
+	DEBUG
 )
 
 func logger(l int, s interface{}) {
@@ -40,9 +40,18 @@ func findNl(str []rune) int {
 	return -1
 }
 
-func isElem(v []string, e string) bool {
-	for _, c := range v {
-		if c == e {
+func isElem(a []string, e *string) bool {
+	for _, c := range a {
+		if c == *e {
+			return true
+		}
+	}
+	return false
+}
+
+func isKey(m map[string]bool, e *string) bool {
+	for k, _ := range m {
+		if k == *e {
 			return true
 		}
 	}
@@ -63,13 +72,13 @@ func haveIntersec(a []string, b []string) bool {
 	return false
 }
 
-func filterPosts(l []pointapi.PostMeta, f *Filter) []pointapi.PostMeta {
-	var res []pointapi.PostMeta
+func filterPosts(l []point.PostMeta, f *Filter) []point.PostMeta {
+	var res []point.PostMeta
 	if f == nil {
 		return l
 	}
 	for _, p := range l {
-		if isElem(f.Users, p.Post.Author.Login) {
+		if isElem(f.Users, &p.Post.Author.Login) {
 			continue
 		} else if haveIntersec(f.Tags, p.Post.Tags) {
 			continue

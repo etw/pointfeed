@@ -20,6 +20,7 @@ import (
 type APISet struct {
 	Point    *point.API
 	Gelbooru *booru.GbAPI
+	Danbooru *booru.DbAPI
 }
 
 var (
@@ -62,7 +63,7 @@ func main() {
 		logger(FATAL, fmt.Sprintf("%s is invalid URI", purl))
 	} else {
 		if socks, err = proxy.FromURL(proxyuri, proxy.Direct); err != nil {
-			logger(WARN, "Falloggernlback to direct connection")
+			logger(WARN, "Fallback to direct connection")
 			socks = proxy.Direct
 		} else {
 			logger(INFO, fmt.Sprintf("Using proxy %s", purl))
@@ -79,8 +80,9 @@ func main() {
 	}
 
 	apiset = &APISet{
-		Point:    point.New(&client, point.POINTIM, &auth),
+		Point:    point.New(&client, point.POINTAPI, &auth),
 		Gelbooru: booru.NewGb(&client, booru.GELBOORU),
+		Danbooru: booru.NewDb(&client, booru.DANBOORU),
 	}
 
 	if len(os.Getenv("DATA_DIR")) > 0 {
@@ -91,7 +93,8 @@ func main() {
 	if rmraw, err := ioutil.ReadFile(fmt.Sprintf("%s/README.md", ddir)); err != nil {
 		logger(FATAL, "Couldn't read README.md")
 	} else {
-		readme = blackfriday.MarkdownCommon(rmraw)
+		readme = blackfriday.MarkdownOptions(rmraw, rdRenderer,
+			blackfriday.Options{Extensions: mdExtensions})
 	}
 
 	http.HandleFunc("/", rootHandler)
@@ -99,7 +102,7 @@ func main() {
 	http.HandleFunc("/feed/tags", tagsHandler)
 
 	bind := fmt.Sprintf("%s:%s", host, port)
-	logger(INFO, fmt.Sprintf("Listening on %s\n", bind))
+	logger(INFO, fmt.Sprintf("Listening on %s", bind))
 	if err := http.ListenAndServe(bind, nil); err != nil {
 		logger(FATAL, err)
 	}
