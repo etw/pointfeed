@@ -11,10 +11,8 @@ import (
 )
 
 func resRender(res *http.ResponseWriter, job *Job) {
-	if feed, err := makeFeed(job); err != nil {
-		logger(ERROR, fmt.Sprintf("{%s} Failed to parse point response: %s", job.Rid, err))
-		(*res).WriteHeader(500)
-	} else if result, err := xml.Marshal(feed); err != nil {
+	feed := makeFeed(job)
+	if result, err := xml.Marshal(feed); err != nil {
 		logger(ERROR, fmt.Sprintf("{%s} Failed to render XML: %s", job.Rid, err))
 		(*res).WriteHeader(500)
 	} else {
@@ -50,7 +48,7 @@ func allHandler(res http.ResponseWriter, req *http.Request) {
 		Self:  fmt.Sprintf("http://%s%s", req.Host, req.URL.Path),
 	}
 
-	for start, has_next := 0, true; has_next && job.Size < job.MinPosts; {
+	for num, start, has_next := 0, 0, true; has_next && num < job.MinPosts; {
 		var data *point.PostList
 
 		logger(DEBUG, fmt.Sprintf("{%s} Requesting posts before: %d", job.Rid, start))
@@ -62,13 +60,13 @@ func allHandler(res http.ResponseWriter, req *http.Request) {
 
 		for i, _ := range data.Posts {
 			if filterPost(&data.Posts[i], job.Blacklist) {
-				job.Size++
+				job.Group.Add(1); num++
 				go makeEntry(&data.Posts[i], &job)
 			}
 		}
 
 		start, has_next = data.Posts[len(data.Posts)-1].Uid, data.HasNext
-		logger(DEBUG, fmt.Sprintf("{%s} We have %d posts, need at least %d", job.Rid, job.Size, job.MinPosts))
+		logger(DEBUG, fmt.Sprintf("{%s} We have %d posts, need at least %d", job.Rid, num, job.MinPosts))
 	}
 
 	resRender(&res, &job)
@@ -104,7 +102,7 @@ func tagsHandler(res http.ResponseWriter, req *http.Request) {
 		Self:  fmt.Sprintf("http://%s%s?tag=%s", req.Host, req.URL.Path, strings.Join(tags, "&tag=")),
 	}
 
-	for start, has_next := 0, true; has_next && job.Size < job.MinPosts; {
+	for num, start, has_next := 0, 0, true; has_next && num < job.MinPosts; {
 		var data *point.PostList
 
 		logger(DEBUG, fmt.Sprintf("{%s} Requesting posts before: %d", job.Rid, start))
@@ -116,13 +114,13 @@ func tagsHandler(res http.ResponseWriter, req *http.Request) {
 
 		for i, _ := range data.Posts {
 			if filterPost(&data.Posts[i], job.Blacklist) {
-				job.Size++
+				job.Group.Add(1); num++
 				go makeEntry(&data.Posts[i], &job)
 			}
 		}
 
 		start, has_next = data.Posts[len(data.Posts)-1].Uid, data.HasNext
-		logger(DEBUG, fmt.Sprintf("{%s} We have %d posts, need at least %d", job.Rid, job.Size, job.MinPosts))
+		logger(DEBUG, fmt.Sprintf("{%s} We have %d posts, need at least %d", job.Rid, num, job.MinPosts))
 	}
 
 	resRender(&res, &job)

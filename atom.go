@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"sort"
 	"strconv"
+	"sync"
 	"time"
 
 	point "github.com/etw/pointapi"
@@ -35,7 +36,7 @@ type Job struct {
 	Rid       string
 	Meta      FeedMeta
 	Queue     chan *Entry
-	Size      int
+	Group     *sync.WaitGroup
 	MinPosts  int
 	Blacklist *Filter
 }
@@ -77,7 +78,6 @@ func (f Feed) Len() int {
 
 func (f Feed) Less(i, j int) bool {
 	if f.Entry[i].Timestamp.After(*f.Entry[j].Timestamp) {
-		//if f.Entry[i].Published > f.Entry[j].Published {
 		return true
 	}
 	return false
@@ -120,7 +120,7 @@ func makeJob(p url.Values) (Job, error) {
 		job.Blacklist = &bl
 	}
 
-	job.Size = 0
+	job.Group = new(sync.WaitGroup)
 	job.Queue = make(chan *Entry, chanSize)
 
 	return job, nil
@@ -184,14 +184,16 @@ func makeEntry(p *point.PostMeta, job *Job) {
 		Author:    &person,
 		Content:   &post,
 	}, &p.Post.Created)
+	job.Group.Done()
 }
 
-func makeFeed(job *Job) (*atom.Feed, error) {
+func makeFeed(job *Job) *atom.Feed {
 	var posts []*Entry
 	var timestamp atom.TimeStr
 
 	defer close(job.Queue)
-	for i := 0; i < job.Size; i++ {
+	job.Group.Wait()
+	for len(job.Queue) > 0 {
 		posts = append(posts, <-job.Queue)
 	}
 
@@ -219,5 +221,5 @@ func makeFeed(job *Job) (*atom.Feed, error) {
 
 	sort.Sort(feed)
 
-	return feed.Atom(), nil
+	return feed.Atom()
 }
