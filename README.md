@@ -1,5 +1,3 @@
-mailto:test@example.com
-
 ## Feed прокси для поинтопараши
 
 [Багтрекер](https://github.com/etw/pointfeed/issues)
@@ -30,7 +28,7 @@ https://pointfeed-etw.rhcloud.com/feed/tags?tag=anime_art&nouser=animal-love
 
 ### Фичи
 
-* поддержка работы с поинтом через SOCKS-прокси;
+* поддержка работы с поинтом через SOCKS-прокси (arts не спалит ОйПи!);
 * поддержка Markdown разметки;
 * вставка прикрепленных к постам картинок;
 * управление попаданием своих постов в фиды (через BL/WL пользователя [@feed](https://feed.point.im));
@@ -39,13 +37,5 @@ https://pointfeed-etw.rhcloud.com/feed/tags?tag=anime_art&nouser=animal-love
 * автозамена ссылок на безопасные (http -> https);
 * показ изображений вместо прямых ссылок на них;
 * показ изображений из постов на gelbooru.
-
-### ToDo
-
-* убирать markdown из заголовков
-
-### Известные проблемы
-
-* не распознаются mailto-ссылки.
 
 #### Слава BnW!
