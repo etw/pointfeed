@@ -22,6 +22,7 @@ var secSites = []string{
 	"google.ru",
 	"github.com",
 	"point.im",
+	"i.point.im",
 	"juick.com",
 	"bnw.im",
 	"danbooru.donmai.us",
