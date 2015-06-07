@@ -19,8 +19,6 @@ import (
 	_ "net/http/pprof"
 )
 
-const pCacheSize = 256
-
 type APISet struct {
 	Point    *point.API
 	Gelbooru *booru.GbAPI
