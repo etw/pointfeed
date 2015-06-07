@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"regexp"
 
 	point "github.com/etw/pointapi"
 )
@@ -52,6 +53,15 @@ func isElem(a []string, e *string) bool {
 func isKey(m map[string]bool, e *string) bool {
 	for k, _ := range m {
 		if k == *e {
+			return true
+		}
+	}
+	return false
+}
+
+func isMatching(a []*regexp.Regexp, e *string) bool {
+	for _, c := range a {
+		if c.MatchString(*e) {
 			return true
 		}
 	}
