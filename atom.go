@@ -2,8 +2,11 @@ package main
 
 import (
 	"bytes"
-	"errors"
+	"crypto/rand"
 	"fmt"
+	"net/url"
+	"sort"
+	"strconv"
 	"time"
 
 	point "github.com/etw/pointapi"
@@ -13,7 +16,114 @@ import (
 
 const maxTitle = 96
 
-func makeEntry(p *point.PostMeta, job *Job) (*atom.Entry, error) {
+type FeedMeta struct {
+	Title string
+	ID    string
+	Href  string
+	Self  string
+}
+
+type Filter struct {
+	Users []string
+	Tags  []string
+}
+
+type Job struct {
+	Rid       string
+	Meta      FeedMeta
+	Queue     chan *Entry
+	Size      int
+	MinPosts  int
+	Blacklist *Filter
+}
+
+type Entry struct {
+	atom.Entry
+	Timestamp *time.Time
+}
+
+type Feed struct {
+	atom.Feed
+	Entry []*Entry
+}
+
+func NewEntry(e *atom.Entry, t *time.Time) *Entry {
+	res := Entry{*e, t}
+	return &res
+}
+
+func (e *Entry) AtomEntry() *atom.Entry {
+	return &e.Entry
+}
+
+func NewFeed(e *atom.Feed, p []*Entry) *Feed {
+	res := Feed{*e, p}
+	return &res
+}
+
+func (f *Feed) AtomFeed() *atom.Feed {
+	for _, v := range f.Entry {
+		f.Feed.Entry = append(f.Feed.Entry, v.AtomEntry())
+	}
+	return &f.Feed
+}
+
+func (f Feed) Len() int {
+	return len(f.Entry)
+}
+
+func (f Feed) Less(i, j int) bool {
+	if f.Entry[i].Timestamp.After(*f.Entry[j].Timestamp) {
+		//if f.Entry[i].Published > f.Entry[j].Published {
+		return true
+	}
+	return false
+}
+
+func (f Feed) Swap(i, j int) {
+	f.Entry[i], f.Entry[j] = f.Entry[j], f.Entry[i]
+}
+
+func makeJob(p url.Values) (Job, error) {
+	var (
+		job Job
+		bl  Filter
+	)
+
+	rid := make([]byte, 8)
+	if _, err := rand.Read(rid); err != nil {
+		logger(ERROR, fmt.Sprintf("{0000000000000000} Couldn't generate request id: %s", err))
+		return job, err
+	} else {
+		job.Rid = fmt.Sprintf("%x", rid)
+	}
+
+	if val, ok := p["minposts"]; ok {
+		var err error
+		if job.MinPosts, err = strconv.Atoi(val[0]); err != nil {
+			logger(WARN, fmt.Sprintf("{%s} Couldn't parse 'minposts' param: %s", job.Rid, err))
+			return job, err
+		}
+	} else {
+		job.MinPosts = 20
+	}
+
+	if val, ok := p["nouser"]; ok {
+		bl.Users = val
+		job.Blacklist = &bl
+	}
+	if val, ok := p["notag"]; ok {
+		bl.Tags = val
+		job.Blacklist = &bl
+	}
+
+	job.Size = 0
+	job.Queue = make(chan *Entry)
+
+	return job, nil
+}
+
+func makeEntry(p *point.PostMeta, job *Job) {
 	var (
 		title string
 		body  = new(bytes.Buffer)
@@ -23,10 +133,11 @@ func makeEntry(p *point.PostMeta, job *Job) (*atom.Entry, error) {
 
 	if c, err := doGroup.Do("posts", pGet(p.Post.Id)); err != nil {
 		if err := renderPost(body, &p.Post); err != nil {
-			return nil, errors.New(fmt.Sprintf("Couldn't render post: %s", err))
+			logger(ERROR, fmt.Sprintf("Couldn't render post: %s", err))
+			return
 		} else {
-			logger(DEBUG, fmt.Sprintf("{%s} Cache miss (uid %s, csize %d)", job.Rid, p.Post.Id, pCache.Len()))
 			doGroup.Do("posts", pPut(p.Post.Id, body.Bytes()))
+			logger(DEBUG, fmt.Sprintf("{%s} Cache miss (uid %s, csize %d)", job.Rid, p.Post.Id, pCache.Len()))
 		}
 	} else {
 		logger(DEBUG, fmt.Sprintf("{%s} Cache hit (uid %s, csize %d)", job.Rid, p.Post.Id, pCache.Len()))
@@ -56,7 +167,7 @@ func makeEntry(p *point.PostMeta, job *Job) (*atom.Entry, error) {
 		title = string(runestr)
 	}
 
-	entry := &atom.Entry{
+	job.Queue <- NewEntry(&atom.Entry{
 		Title: title,
 		ID:    fmt.Sprintf("%s/%s", point.POINTIM, p.Post.Id),
 		Link: []atom.Link{
@@ -69,29 +180,24 @@ func makeEntry(p *point.PostMeta, job *Job) (*atom.Entry, error) {
 		Updated:   atom.Time(p.Post.Created),
 		Author:    &person,
 		Content:   &post,
-	}
-	return entry, nil
+	}, &p.Post.Created)
 }
 
 func makeFeed(job *Job) (*atom.Feed, error) {
-	var posts []*atom.Entry
+	var posts []*Entry
 	var timestamp atom.TimeStr
 
-	for i := range job.Data {
-		if entry, err := makeEntry(&job.Data[i], job); err != nil {
-			return nil, err
-		} else {
-			posts = append(posts, entry)
-		}
+	for i := 0; i < job.Size; i++ {
+		posts = append(posts, <-job.Queue)
 	}
 
-	if len(job.Data) > 0 {
-		timestamp = atom.Time(job.Data[0].Post.Created)
+	if len(posts) > 0 {
+		timestamp = (*posts[0]).Published
 	} else {
 		timestamp = atom.Time(time.Now())
 	}
 
-	feed := atom.Feed{
+	feed := NewFeed(&atom.Feed{
 		Title: job.Meta.Title,
 		ID:    job.Meta.ID,
 		Link: []atom.Link{
@@ -105,8 +211,9 @@ func makeFeed(job *Job) (*atom.Feed, error) {
 			},
 		},
 		Updated: timestamp,
-		Entry:   posts,
-	}
+	}, posts)
 
-	return &feed, nil
+	sort.Sort(feed)
+
+	return feed.AtomFeed(), nil
 }

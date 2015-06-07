@@ -82,17 +82,24 @@ func haveIntersec(a []string, b []string) bool {
 	return false
 }
 
+func filterPost(p *point.PostMeta, f *Filter) bool {
+	if f == nil {
+		return true
+	}
+	if isElem(f.Users, &p.Post.Author.Login) ||
+		haveIntersec(f.Tags, p.Post.Tags) {
+		return false
+	}
+	return true
+}
+
 func filterPosts(l []point.PostMeta, f *Filter) []point.PostMeta {
 	var res []point.PostMeta
 	if f == nil {
 		return l
 	}
 	for _, p := range l {
-		if isElem(f.Users, &p.Post.Author.Login) {
-			continue
-		} else if haveIntersec(f.Tags, p.Post.Tags) {
-			continue
-		} else {
+		if filterPost(&p, f) {
 			res = append(res, p)
 		}
 	}
