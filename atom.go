@@ -16,7 +16,7 @@ const maxTitle = 96
 func makeEntry(p *point.PostMeta, job *Job) (*atom.Entry, error) {
 	var (
 		title string
-		body = new(bytes.Buffer)
+		body  = new(bytes.Buffer)
 	)
 
 	logger(DEBUG, fmt.Sprintf("{%s} Got post; id: %s, author: %s, files: %d", job.Rid, p.Post.Id, p.Post.Author.Login, len(p.Post.Files)))

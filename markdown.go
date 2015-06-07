@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"net/url"
 	"regexp"
 	"text/template"
@@ -52,9 +53,9 @@ func newRenderer(flags int, title string, css string) blackfriday.Renderer {
 
 func (options *Html) closeTag() string {
 	if options.GetFlags()&blackfriday.HTML_USE_XHTML != 0 {
-		return " />"
+		return ` />`
 	} else {
-		return ">"
+		return `>`
 	}
 }
 
@@ -84,16 +85,16 @@ func (options *Html) Link(out *bytes.Buffer, link []byte, title []byte, content 
 		}
 	}
 
-	out.WriteString("<a href=\"")
+	out.WriteString(`<a href="`)
 	template.HTMLEscape(out, newlink)
 	if len(title) > 0 {
-		out.WriteString("\" title=\"")
+		out.WriteString(`" title="`)
 		template.HTMLEscape(out, title)
 	}
 
-	out.WriteString("\" rel=\"noreferrer\" target=\"_blank\">")
+	out.WriteString(`" rel="noreferrer" target="_blank">`)
 	out.Write(content)
-	out.WriteString("</a>")
+	out.WriteString(`</a>`)
 	return
 }
 
@@ -101,18 +102,18 @@ func (options *Html) Image(out *bytes.Buffer, link []byte, title []byte, alt []b
 	var (
 		img = new(bytes.Buffer)
 	)
+	defer img.Reset()
 
-	img.WriteString("<img src=\"")
+	img.WriteString(`<img src="`)
 	template.HTMLEscape(img, link)
-	img.WriteString("\" alt=\"")
+	img.WriteString(`" alt="`)
 	if len(alt) > 0 {
 		template.HTMLEscape(img, alt)
 	}
 	if len(title) > 0 {
-		img.WriteString("\" title=\"")
+		img.WriteString(`" title="`)
 		template.HTMLEscape(img, title)
 	}
-
 	img.WriteByte('"')
 	img.WriteString(options.closeTag())
 
@@ -127,35 +128,35 @@ func (options *Html) AutoLink(out *bytes.Buffer, link []byte, kind int) {
 
 	if u, err := url.Parse(string(link)); err == nil {
 		if p, ok := urlGelbooru(u); ok {
-			options.Image(out, []byte(p.Sample), []byte(p.Tags), link)
+			out.WriteString(fmt.Sprintf(imgFmt, link, p.Sample, link, p.Tags))
 			return
 		}
 		if p, ok := urlDanbooru(u); ok {
-			options.Image(out, []byte(p.Sample), []byte(p.Tags), link)
+			out.WriteString(fmt.Sprintf(imgFmt, link, p.Sample, link, p.Tags))
 			return
 		}
-		if urlPicture(u) {
-			options.Image(out, link, link, link)
+		if urlImage(u) {
+			out.WriteString(fmt.Sprintf(imgFmt, link, link, link, link))
 			return
 		}
 	}
 
-	out.WriteString("<a href=\"")
+	out.WriteString(`<a href="`)
 	if kind == blackfriday.LINK_TYPE_EMAIL {
 		out.WriteString("mailto:")
 	}
 
 	entityEscapeWithSkip(out, link, skipRanges)
 
-	out.WriteString("\" rel=\"noreferrer\" target=\"_blank\">")
+	out.WriteString(`" rel="noreferrer" target="_blank">`)
 
-	if bytes.HasPrefix(link, []byte("mailto://")) {
-		template.HTMLEscape(out, link[len("mailto://"):])
-	} else if bytes.HasPrefix(link, []byte("mailto:")) {
-		template.HTMLEscape(out, link[len("mailto:"):])
+	if bytes.HasPrefix(link, []byte(`mailto://`)) {
+		template.HTMLEscape(out, link[len(`mailto://`):])
+	} else if bytes.HasPrefix(link, []byte(`mailto:`)) {
+		template.HTMLEscape(out, link[len(`mailto:`):])
 	} else {
 		entityEscapeWithSkip(out, link, skipRanges)
 	}
 
-	out.WriteString("</a>")
+	out.WriteString(`</a>`)
 }

@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"regexp"
 	"strconv"
-	"strings"
 	"text/template"
 
 	booru "github.com/etw/gobooru"
@@ -15,6 +14,8 @@ import (
 
 	"github.com/russross/blackfriday"
 )
+
+const imgFmt = `<p><a href="%s" rel="noreferrer" target="_blank"><img src="%s" alt="%s" title="%s" /></a></p>`
 
 var secSites = []string{
 	"google.com",
@@ -36,7 +37,12 @@ var dbSites = map[string]bool{
 	"yande.re":                true,
 }
 
-var dbPost = regexp.MustCompilePOSIX("^/post/[0-9]+$")
+var (
+	dbPost = regexp.MustCompilePOSIX(`^/post/[0-9]+$`)
+	imgExt = regexp.MustCompilePOSIX(`.(jpe?g|JPE?G|png|PNG|gif|GIF)$`)
+	vidExt = regexp.MustCompilePOSIX(`.(flv|FLV|webm|WEBM|mp4|MP4)$`)
+	audExt = regexp.MustCompilePOSIX(`.(mp3|MP3|m4a|M4A|ogg|OGG)$`)
+)
 
 func urlGelbooru(u *url.URL) (*booru.Post, bool) {
 	if !(u.Scheme == "http" && u.Host == "gelbooru.com" && u.Path == "/index.php") {
@@ -75,16 +81,58 @@ func urlDanbooru(u *url.URL) (*booru.Post, bool) {
 		return nil, false
 	}
 
+	if dbSites[u.Host] {
+		urlHttps(u)
+	}
+
 	return nil, false
 }
 
-func urlPicture(u *url.URL) bool {
+func urlImage(u *url.URL) bool {
 	if !((u.Scheme == "http") || (u.Scheme == "https")) {
 		return false
 	}
 
-	if strings.HasSuffix(u.Path, ".jpg") || strings.HasSuffix(u.Path, ".jpeg") ||
-		strings.HasSuffix(u.Path, ".png") || strings.HasSuffix(u.Path, ".gif") {
+	if imgExt.MatchString(u.Path) {
+		urlHttps(u)
+		return true
+	}
+
+	return false
+}
+
+func urlVideo(u *url.URL) bool {
+	if !((u.Scheme == "http") || (u.Scheme == "https")) {
+		return false
+	}
+
+	if vidExt.MatchString(u.Path) {
+		urlHttps(u)
+		return true
+	}
+
+	return false
+}
+
+func urlYoutube(u *url.URL) bool {
+	if !((u.Scheme == "http") || (u.Scheme == "https")) {
+		return false
+	}
+
+	if !((u.Host == "youtube.com") || (u.Host == "www.youtube.com") ||
+		(u.Host == "youtu.be")) || !(u.Path == "/watch") {
+		return false
+	}
+
+	return false
+}
+
+func urlAudio(u *url.URL) bool {
+	if !((u.Scheme == "http") || (u.Scheme == "https")) {
+		return false
+	}
+
+	if audExt.MatchString(u.Path) {
 		urlHttps(u)
 		return true
 	}
@@ -101,12 +149,15 @@ func urlHttps(u *url.URL) bool {
 }
 
 func formatFiles(out *bytes.Buffer, f []string) {
-	var tmp bytes.Buffer
 	for i, _ := range f {
-		fmt.Fprintf(&tmp, "\n![%s](%s)\n", f[i], f[i])
-		out.Write(blackfriday.MarkdownOptions(tmp.Bytes(), mdRenderer,
-			blackfriday.Options{Extensions: mdExtensions}))
-		tmp.Reset()
+		var l string
+		if u, err := url.Parse(f[i]); err != nil {
+			l = template.HTMLEscapeString(f[i])
+		} else {
+			urlHttps(u)
+			l = template.HTMLEscapeString(u.String())
+		}
+		fmt.Fprintf(out, imgFmt, l, l, l, l)
 	}
 }
 
