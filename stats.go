@@ -9,7 +9,7 @@ import (
 const listHref = `<p><a href="%s" rel="noreferrer">%s</a></p>`
 
 type Stats struct {
-	Cache StatsCache `json:"cache"`
+	Cache StatsCache
 }
 
 type StatsCache struct {
