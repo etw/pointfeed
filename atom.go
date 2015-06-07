@@ -14,7 +14,10 @@ import (
 	"golang.org/x/tools/blog/atom"
 )
 
-const maxTitle = 96
+const (
+	maxTitle = 96
+	chanSize = 8
+)
 
 type FeedMeta struct {
 	Title string
@@ -38,34 +41,34 @@ type Job struct {
 }
 
 type Entry struct {
-	atom.Entry
+	*atom.Entry
 	Timestamp *time.Time
 }
 
 type Feed struct {
-	atom.Feed
+	*atom.Feed
 	Entry []*Entry
 }
 
 func NewEntry(e *atom.Entry, t *time.Time) *Entry {
-	res := Entry{*e, t}
+	res := Entry{e, t}
 	return &res
 }
 
-func (e *Entry) AtomEntry() *atom.Entry {
-	return &e.Entry
+func (e *Entry) Atom() *atom.Entry {
+	return e.Entry
 }
 
 func NewFeed(e *atom.Feed, p []*Entry) *Feed {
-	res := Feed{*e, p}
+	res := Feed{e, p}
 	return &res
 }
 
-func (f *Feed) AtomFeed() *atom.Feed {
+func (f *Feed) Atom() *atom.Feed {
 	for _, v := range f.Entry {
-		f.Feed.Entry = append(f.Feed.Entry, v.AtomEntry())
+		f.Feed.Entry = append(f.Feed.Entry, v.Atom())
 	}
-	return &f.Feed
+	return f.Feed
 }
 
 func (f Feed) Len() int {
@@ -118,7 +121,7 @@ func makeJob(p url.Values) (Job, error) {
 	}
 
 	job.Size = 0
-	job.Queue = make(chan *Entry)
+	job.Queue = make(chan *Entry, chanSize)
 
 	return job, nil
 }
@@ -187,6 +190,7 @@ func makeFeed(job *Job) (*atom.Feed, error) {
 	var posts []*Entry
 	var timestamp atom.TimeStr
 
+	defer close(job.Queue)
 	for i := 0; i < job.Size; i++ {
 		posts = append(posts, <-job.Queue)
 	}
@@ -215,5 +219,5 @@ func makeFeed(job *Job) (*atom.Feed, error) {
 
 	sort.Sort(feed)
 
-	return feed.AtomFeed(), nil
+	return feed.Atom(), nil
 }

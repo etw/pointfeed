@@ -32,7 +32,7 @@ var (
 
 	doGroup *singleflight.Group
 	pCache  *lru.Cache
-	pStats  Stats
+	stats   Stats
 )
 
 func main() {
@@ -107,8 +107,8 @@ func main() {
 	pCache = lru.New(pCacheSize)
 
 	http.HandleFunc("/", rootHandler)
-	http.HandleFunc("/cache", cacheLister)
-	http.HandleFunc("/cache/posts", cacheHandler(&pStats))
+	http.HandleFunc("/stats/", statsHandler)
+	http.HandleFunc("/stats/cache", cacheHandler(&stats))
 	http.HandleFunc("/feed/all", allHandler)
 	http.HandleFunc("/feed/tags", tagsHandler)
 
