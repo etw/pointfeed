@@ -10,8 +10,8 @@ import (
 	point "github.com/etw/pointapi"
 )
 
-func resRender(res *http.ResponseWriter, job *Job) {
-	feed := makeFeed(job)
+func (job *Job) resRender(res *http.ResponseWriter) {
+	feed := job.makeFeed()
 	if result, err := xml.Marshal(feed); err != nil {
 		logger(ERROR, fmt.Sprintf("{%s} Failed to render XML: %s", job.Rid, err))
 		(*res).WriteHeader(500)
@@ -35,7 +35,7 @@ func allHandler(res http.ResponseWriter, req *http.Request) {
 		err    error
 	)
 
-	if job, err = makeJob(params); err != nil {
+	if job, err = newJob(params); err != nil {
 		res.WriteHeader(500)
 		return
 	}
@@ -48,29 +48,16 @@ func allHandler(res http.ResponseWriter, req *http.Request) {
 		Self:  fmt.Sprintf("http://%s%s", req.Host, req.URL.Path),
 	}
 
-	for num, start, has_next := 0, 0, true; has_next && num < job.MinPosts; {
-		var data *point.PostList
-
-		logger(DEBUG, fmt.Sprintf("{%s} Requesting posts before: %d", job.Rid, start))
-		if data, err = apiset.Point.GetAll(start); err != nil {
+	f := func(start int) (*point.PostList, error) {
+		if data, err := apiset.Point.GetAll(start); err != nil {
 			logger(ERROR, fmt.Sprintf("{%s} Failed to get all posts: %s", job.Rid, err))
-			res.WriteHeader(500)
-			return
+			return nil, err
+		} else {
+			return data, nil
 		}
-
-		for i, _ := range data.Posts {
-			if filterPost(&data.Posts[i], job.Blacklist) {
-				job.Group.Add(1)
-				num++
-				go makeEntry(&data.Posts[i], &job)
-			}
-		}
-
-		start, has_next = data.Posts[len(data.Posts)-1].Uid, data.HasNext
-		logger(DEBUG, fmt.Sprintf("{%s} We have %d posts, need at least %d", job.Rid, num, job.MinPosts))
 	}
 
-	resRender(&res, &job)
+	job.procJob(&res, f)
 }
 
 func tagsHandler(res http.ResponseWriter, req *http.Request) {
@@ -80,7 +67,7 @@ func tagsHandler(res http.ResponseWriter, req *http.Request) {
 		err    error
 	)
 
-	if job, err = makeJob(params); err != nil {
+	if job, err = newJob(params); err != nil {
 		res.WriteHeader(500)
 		return
 	}
@@ -103,27 +90,14 @@ func tagsHandler(res http.ResponseWriter, req *http.Request) {
 		Self:  fmt.Sprintf("http://%s%s?tag=%s", req.Host, req.URL.Path, strings.Join(tags, "&tag=")),
 	}
 
-	for num, start, has_next := 0, 0, true; has_next && num < job.MinPosts; {
-		var data *point.PostList
-
-		logger(DEBUG, fmt.Sprintf("{%s} Requesting posts before: %d", job.Rid, start))
-		if data, err = apiset.Point.GetTags(start, tags); err != nil {
+	f := func(start int) (*point.PostList, error) {
+		if data, err := apiset.Point.GetTags(start, tags); err != nil {
 			logger(ERROR, fmt.Sprintf("{%s} Failed to get tagged posts: %s", job.Rid, err))
-			res.WriteHeader(500)
-			return
+			return nil, err
+		} else {
+			return data, nil
 		}
-
-		for i, _ := range data.Posts {
-			if filterPost(&data.Posts[i], job.Blacklist) {
-				job.Group.Add(1)
-				num++
-				go makeEntry(&data.Posts[i], &job)
-			}
-		}
-
-		start, has_next = data.Posts[len(data.Posts)-1].Uid, data.HasNext
-		logger(DEBUG, fmt.Sprintf("{%s} We have %d posts, need at least %d", job.Rid, num, job.MinPosts))
 	}
 
-	resRender(&res, &job)
+	job.procJob(&res, f)
 }
