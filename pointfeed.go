@@ -11,11 +11,15 @@ import (
 	booru "github.com/etw/gobooru"
 	point "github.com/etw/pointapi"
 
+	"github.com/golang/groupcache/lru"
+	"github.com/golang/groupcache/singleflight"
 	"github.com/russross/blackfriday"
 	"golang.org/x/net/proxy"
 
 	_ "net/http/pprof"
 )
+
+const pCacheSize = 256
 
 type APISet struct {
 	Point    *point.API
@@ -27,6 +31,10 @@ var (
 	readme []byte
 	apiset *APISet
 	loglvl int
+
+	doGroup *singleflight.Group
+	pCache  *lru.Cache
+	pStats  Stats
 )
 
 func main() {
@@ -97,7 +105,12 @@ func main() {
 			blackfriday.Options{Extensions: mdExtensions})
 	}
 
+	doGroup = new(singleflight.Group)
+	pCache = lru.New(pCacheSize)
+
 	http.HandleFunc("/", rootHandler)
+	http.HandleFunc("/cache", cacheLister)
+	http.HandleFunc("/cache/posts", cacheHandler(&pStats))
 	http.HandleFunc("/feed/all", allHandler)
 	http.HandleFunc("/feed/tags", tagsHandler)
 
