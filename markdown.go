@@ -126,8 +126,16 @@ func (options *Html) AutoLink(out *bytes.Buffer, link []byte, kind int) {
 	)
 
 	if u, err := url.Parse(string(link)); err == nil {
-		if tags, ok := urlGelbooru(u); ok {
-			options.Image(out, link, []byte(*tags), link)
+		if p, ok := urlGelbooru(u); ok {
+			options.Image(out, []byte(p.Sample), []byte(p.Tags), link)
+			return
+		}
+		if p, ok := urlDanbooru(u); ok {
+			options.Image(out, []byte(p.Sample), []byte(p.Tags), link)
+			return
+		}
+		if urlPicture(u) {
+			options.Image(out, link, link, link)
 			return
 		}
 	}
@@ -141,12 +149,11 @@ func (options *Html) AutoLink(out *bytes.Buffer, link []byte, kind int) {
 
 	out.WriteString("\" rel=\"noreferrer\" target=\"_blank\">")
 
-	switch {
-	case bytes.HasPrefix(link, []byte("mailto://")):
+	if bytes.HasPrefix(link, []byte("mailto://")) {
 		template.HTMLEscape(out, link[len("mailto://"):])
-	case bytes.HasPrefix(link, []byte("mailto:")):
+	} else if bytes.HasPrefix(link, []byte("mailto:")) {
 		template.HTMLEscape(out, link[len("mailto:"):])
-	default:
+	} else {
 		entityEscapeWithSkip(out, link, skipRanges)
 	}
 
