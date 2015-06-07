@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 	"text/template"
+	"regexp"
 
 	point "github.com/etw/pointapi"
 
@@ -25,6 +26,15 @@ var secSites = []string{
 	"chan.sankakucomplex.com",
 	"yande.re",
 }
+
+var dbSites = map[string]bool{
+	"danbooru.donmai.us":      true,
+	"konachan.com":            false,
+	"chan.sankakucomplex.com": true,
+	"yande.re":                true,
+}
+
+var dbPost = regexp.MustCompilePOSIX("^/post/[0-9]+$")
 
 func urlGelbooru(u *url.URL) (*string, bool) {
 	if !(u.Scheme == "http" && u.Host == "gelbooru.com" && u.Path == "/index.php") {
@@ -59,8 +69,20 @@ func urlGelbooru(u *url.URL) (*string, bool) {
 	}
 }
 
+func urlDanbooru(u *url.URL) (*string, bool) {
+	if !(((u.Scheme == "http") || (u.Scheme == "https")) && isKey(dbSites, &u.Host)) {
+		return nil, false
+	}
+
+	if !dbPost.MatchString(u.Path) {
+		return nil, false
+	}
+
+	return nil, false
+}
+
 func urlHttps(u *url.URL) bool {
-	if u.Scheme == "http" && isElem(secSites, u.Host) {
+	if u.Scheme == "http" && isElem(secSites, &u.Host) {
 		u.Scheme = "https"
 		return true
 	}
@@ -90,7 +112,7 @@ func formatPost(out *bytes.Buffer, p []byte) {
 func renderPost(out *bytes.Buffer, p *point.PostData) (e error) {
 	defer func() {
 		if r := recover(); r != nil {
-			e = errors.New(fmt.Sprintf("\n%s",r))
+			e = errors.New(fmt.Sprintf("\n%s", r))
 		}
 	}()
 

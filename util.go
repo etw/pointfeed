@@ -40,9 +40,18 @@ func findNl(str []rune) int {
 	return -1
 }
 
-func isElem(v []string, e string) bool {
-	for _, c := range v {
-		if c == e {
+func isElem(a []string, e *string) bool {
+	for _, c := range a {
+		if c == *e {
+			return true
+		}
+	}
+	return false
+}
+
+func isKey(m map[string]bool, e *string) bool {
+	for k, _ := range m {
+		if k == *e {
 			return true
 		}
 	}
@@ -69,7 +78,7 @@ func filterPosts(l []point.PostMeta, f *Filter) []point.PostMeta {
 		return l
 	}
 	for _, p := range l {
-		if isElem(f.Users, p.Post.Author.Login) {
+		if isElem(f.Users, &p.Post.Author.Login) {
 			continue
 		} else if haveIntersec(f.Tags, p.Post.Tags) {
 			continue

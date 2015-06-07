@@ -20,6 +20,7 @@ import (
 type APISet struct {
 	Point    *point.API
 	Gelbooru *booru.GbAPI
+	Danbooru *booru.DbAPI
 }
 
 var (
@@ -81,6 +82,7 @@ func main() {
 	apiset = &APISet{
 		Point:    point.New(&client, point.POINTAPI, &auth),
 		Gelbooru: booru.NewGb(&client, booru.GELBOORU),
+		Danbooru: booru.NewDb(&client, booru.DANBOORU),
 	}
 
 	if len(os.Getenv("DATA_DIR")) > 0 {
