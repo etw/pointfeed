@@ -42,6 +42,7 @@ func main() {
 		port string // Listen port
 		auth string // Authentication token
 		ddir string // Data directory
+		pcsz int    //Size of posts cache
 
 		socks proxy.Dialer
 	)
@@ -52,6 +53,7 @@ func main() {
 	flag.StringVar(&auth, "auth", "", "Authentication token")
 	flag.StringVar(&ddir, "data", ".", "Data directory")
 	flag.IntVar(&loglvl, "loglevel", INFO, "Logging level [0-4]")
+	flag.IntVar(&pcsz, "pcachesz", pCacheSize, "Size of posts cache")
 	flag.Parse()
 
 	if len(os.Getenv("HOST")) > 0 && len(os.Getenv("PORT")) > 0 {
@@ -104,7 +106,7 @@ func main() {
 	}
 
 	doGroup = new(singleflight.Group)
-	pCache = lru.New(pCacheSize)
+	pCache = lru.New(pcsz)
 
 	http.HandleFunc("/", rootHandler)
 	http.HandleFunc("/stats/", statsHandler)
