@@ -19,8 +19,6 @@ import (
 	_ "net/http/pprof"
 )
 
-const pCacheSize = 256
-
 type APISet struct {
 	Point    *point.API
 	Gelbooru *booru.GbAPI
@@ -59,7 +57,7 @@ func main() {
 	if len(os.Getenv("HOST")) > 0 && len(os.Getenv("PORT")) > 0 {
 		host = os.Getenv("HOST")
 		port = os.Getenv("PORT")
-		logger(INFO, "Got host:port fron environment variables")
+		logger(INFO, "Got host:port from environment variables")
 	}
 
 	if len(os.Getenv("POINT_AUTH")) > 0 {

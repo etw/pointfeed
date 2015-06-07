@@ -6,6 +6,8 @@ import (
 	"net/http"
 )
 
+const pCacheSize = 256
+
 type Stats struct {
 	Size   int `json:"size"`
 	Total  int `json:"total"`
@@ -13,25 +15,24 @@ type Stats struct {
 	Missed int `json:"missed"`
 }
 
-func (s *Stats) renderStats(w *http.ResponseWriter) {
+func (s *Stats) render(w *http.ResponseWriter) {
 	json.NewEncoder(*w).Encode(s)
 }
 
-func pGet(uid int) func() (interface{}, error) {
+func pGet(uid string) func() (interface{}, error) {
 	return func() (interface{}, error) {
+		pStats.Total++
 		if c, ok := pCache.Get(uid); ok {
 			pStats.Hit++
-			pStats.Total++
 			return c, nil
 		} else {
 			pStats.Missed++
-			pStats.Total++
 			return nil, errors.New("Cache miss")
 		}
 	}
 }
 
-func pPut(uid int, buf []byte) func() (interface{}, error) {
+func pPut(uid string, buf []byte) func() (interface{}, error) {
 	return func() (interface{}, error) {
 		pCache.Add(uid, buf)
 		pStats.Size = pCache.Len()
