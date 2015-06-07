@@ -17,17 +17,16 @@ import (
 
 const imgFmt = `<p><a href="%s" rel="noreferrer" target="_blank"><img src="%s" alt="%s" title="%s" /></a></p>`
 
-var secSites = []string{
-	"google.com",
-	"google.ru",
-	"github.com",
-	"point.im",
-	"juick.com",
-	"bnw.im",
-	"danbooru.donmai.us",
-	"safebooru.donmai.us",
-	"chan.sankakucomplex.com",
-	"yande.re",
+var secSites = []*regexp.Regexp{
+	regexp.MustCompilePOSIX(`^google\.(com|ru)$`),
+	regexp.MustCompilePOSIX(`^github\.com$`),
+	regexp.MustCompilePOSIX(`^(i\.)?imgur\.com$`),
+	regexp.MustCompilePOSIX(`^(i\.)?point\.im$`),
+	regexp.MustCompilePOSIX(`^juick\.com$`),
+	regexp.MustCompilePOSIX(`^bnw\.im$`),
+	regexp.MustCompilePOSIX(`^(dan|safe)booru\.donmai\.us$`),
+	regexp.MustCompilePOSIX(`^(chan\.)?sankakucomplex\.com$`),
+	regexp.MustCompilePOSIX(`^yande\.re$`),
 }
 
 var dbSites = map[string]bool{
@@ -141,7 +140,7 @@ func urlAudio(u *url.URL) bool {
 }
 
 func urlHttps(u *url.URL) bool {
-	if u.Scheme == "http" && isElem(secSites, &u.Host) {
+	if u.Scheme == "http" && isMatching(secSites, &u.Host) {
 		u.Scheme = "https"
 		return true
 	}
