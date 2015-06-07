@@ -54,10 +54,10 @@ func rootHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func cacheLister(res http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(res,"/cache/posts\n")
+	fmt.Fprintf(res, "/cache/posts\n")
 }
 
-func cacheHandler(s *Stats) (func(res http.ResponseWriter, req *http.Request)) {
+func cacheHandler(s *Stats) func(res http.ResponseWriter, req *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
 		res.Header().Set("Content-Type", "application/json; charset=utf-8")
 		s.render(&res)

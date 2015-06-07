@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-const pCacheSize = 256
+const pCacheSize = 2048
 
 type Stats struct {
 	Size   int `json:"size"`
