@@ -1,32 +1,19 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
-	"net/http"
 )
 
 const pCacheSize = 8192
 
-type Stats struct {
-	Size   int `json:"size"`
-	Total  int `json:"total"`
-	Hit    int `json:"hit"`
-	Missed int `json:"missed"`
-}
-
-func (s *Stats) render(w *http.ResponseWriter) {
-	json.NewEncoder(*w).Encode(s)
-}
-
 func pGet(uid string) func() (interface{}, error) {
 	return func() (interface{}, error) {
-		pStats.Total++
+		stats.Cache.Posts.Total++
 		if c, ok := pCache.Get(uid); ok {
-			pStats.Hit++
+			stats.Cache.Posts.Hit++
 			return c, nil
 		} else {
-			pStats.Missed++
+			stats.Cache.Posts.Missed++
 			return nil, errors.New("Cache miss")
 		}
 	}
@@ -35,7 +22,7 @@ func pGet(uid string) func() (interface{}, error) {
 func pPut(uid string, buf []byte) func() (interface{}, error) {
 	return func() (interface{}, error) {
 		pCache.Add(uid, buf)
-		pStats.Size = pCache.Len()
+		stats.Cache.Posts.Size = pCache.Len()
 		return nil, nil
 	}
 }

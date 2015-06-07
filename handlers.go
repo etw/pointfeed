@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
-
 	"strings"
 
 	point "github.com/etw/pointapi"
@@ -29,17 +28,6 @@ func resRender(res *http.ResponseWriter, job *Job) {
 func rootHandler(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "text/html; charset=utf-8")
 	res.Write(readme)
-}
-
-func cacheLister(res http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(res, "/cache/posts\n")
-}
-
-func cacheHandler(s *Stats) func(res http.ResponseWriter, req *http.Request) {
-	return func(res http.ResponseWriter, req *http.Request) {
-		res.Header().Set("Content-Type", "application/json; charset=utf-8")
-		s.render(&res)
-	}
 }
 
 func allHandler(res http.ResponseWriter, req *http.Request) {
