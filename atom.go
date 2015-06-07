@@ -42,49 +42,33 @@ type Job struct {
 }
 
 type Entry struct {
-	*atom.Entry
+	Atom      *atom.Entry
 	Timestamp *time.Time
 }
 
-type Feed struct {
-	*atom.Feed
-	Entry []*Entry
-}
+type Entries []*Entry
 
-func NewEntry(e *atom.Entry, t *time.Time) *Entry {
-	res := Entry{e, t}
-	return &res
-}
-
-func (e *Entry) Atom() *atom.Entry {
-	return e.Entry
-}
-
-func NewFeed(e *atom.Feed, p []*Entry) *Feed {
-	res := Feed{e, p}
-	return &res
-}
-
-func (f *Feed) Atom() *atom.Feed {
-	for _, v := range f.Entry {
-		f.Feed.Entry = append(f.Feed.Entry, v.Atom())
+func (e Entries) Atom() []*atom.Entry {
+	var r []*atom.Entry
+	for _, v := range e {
+		r = append(r, v.Atom)
 	}
-	return f.Feed
+	return r
 }
 
-func (f Feed) Len() int {
-	return len(f.Entry)
+func (e Entries) Len() int {
+	return len(e)
 }
 
-func (f Feed) Less(i, j int) bool {
-	if f.Entry[i].Timestamp.After(*f.Entry[j].Timestamp) {
+func (e Entries) Less(i, j int) bool {
+	if e[i].Timestamp.After(*e[j].Timestamp) {
 		return true
 	}
 	return false
 }
 
-func (f Feed) Swap(i, j int) {
-	f.Entry[i], f.Entry[j] = f.Entry[j], f.Entry[i]
+func (e Entries) Swap(i, j int) {
+	e[i], e[j] = e[j], e[i]
 }
 
 func makeJob(p url.Values) (Job, error) {
@@ -170,40 +154,46 @@ func makeEntry(p *point.PostMeta, job *Job) {
 		title = string(runestr)
 	}
 
-	job.Queue <- NewEntry(&atom.Entry{
-		Title: title,
-		ID:    fmt.Sprintf("%s/%s", point.POINTIM, p.Post.Id),
-		Link: []atom.Link{
-			atom.Link{
-				Rel:  "alternate",
-				Href: fmt.Sprintf("%s/%s", point.POINTIM, p.Post.Id),
+	job.Queue <- &Entry{
+		Atom: &atom.Entry{
+			Title: title,
+			ID:    fmt.Sprintf("%s/%s", point.POINTIM, p.Post.Id),
+			Link: []atom.Link{
+				atom.Link{
+					Rel:  "alternate",
+					Href: fmt.Sprintf("%s/%s", point.POINTIM, p.Post.Id),
+				},
 			},
+			Published: atom.Time(p.Post.Created),
+			Updated:   atom.Time(p.Post.Created),
+			Author:    &person,
+			Content:   &post,
 		},
-		Published: atom.Time(p.Post.Created),
-		Updated:   atom.Time(p.Post.Created),
-		Author:    &person,
-		Content:   &post,
-	}, &p.Post.Created)
+		Timestamp: &p.Post.Created
+	}
 	job.Group.Done()
 }
 
 func makeFeed(job *Job) *atom.Feed {
-	var posts []*Entry
-	var timestamp atom.TimeStr
-
+	var (
+		posts     []*Entry
+		timestamp atom.TimeStr
+	)
 	defer close(job.Queue)
+
 	job.Group.Wait()
 	for len(job.Queue) > 0 {
 		posts = append(posts, <-job.Queue)
 	}
+	sort.Sort(Entries(posts))
 
 	if len(posts) > 0 {
-		timestamp = (*posts[0]).Published
+		timestamp = (*posts[0]).Atom.Published
 	} else {
 		timestamp = atom.Time(time.Now())
 	}
 
-	feed := NewFeed(&atom.Feed{
+	return &atom.Feed{
 		Title: job.Meta.Title,
 		ID:    job.Meta.ID,
 		Link: []atom.Link{
@@ -217,9 +207,6 @@ func makeFeed(job *Job) *atom.Feed {
 			},
 		},
 		Updated: timestamp,
-	}, posts)
-
-	sort.Sort(feed)
-
-	return feed.Atom()
+		Entry:   Entries(posts).Atom(),
+	}
 }

@@ -60,7 +60,8 @@ func allHandler(res http.ResponseWriter, req *http.Request) {
 
 		for i, _ := range data.Posts {
 			if filterPost(&data.Posts[i], job.Blacklist) {
-				job.Group.Add(1); num++
+				job.Group.Add(1)
+				num++
 				go makeEntry(&data.Posts[i], &job)
 			}
 		}
@@ -114,7 +115,8 @@ func tagsHandler(res http.ResponseWriter, req *http.Request) {
 
 		for i, _ := range data.Posts {
 			if filterPost(&data.Posts[i], job.Blacklist) {
-				job.Group.Add(1); num++
+				job.Group.Add(1)
+				num++
 				go makeEntry(&data.Posts[i], &job)
 			}
 		}
