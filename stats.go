@@ -9,7 +9,7 @@ import (
 const listHref = `<p><a href="%s" rel="noreferrer">%s</a></p>`
 
 type Stats struct {
-	Cache StatsCache `json:"cache"`
+	Cache StatsCache
 }
 
 type StatsCache struct {
@@ -18,9 +18,9 @@ type StatsCache struct {
 
 type StatsPCache struct {
 	Size   int `json:"size"`
-	Total  int `json:"total"`
-	Hit    int `json:"hit"`
-	Missed int `json:"missed"`
+	Total  uint64 `json:"total"`
+	Hit    uint64 `json:"hit"`
+	Missed uint64 `json:"missed"`
 }
 
 func statsHandler(res http.ResponseWriter, req *http.Request) {
