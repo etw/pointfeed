@@ -49,31 +49,16 @@ func (job *Job) makeEntry(p *point.PostMeta) {
 		body  = new(bytes.Buffer)
 	)
 
+	defer body.Reset()
 	logger(DEBUG, fmt.Sprintf("{%s} Got post; id: %s, author: %s, files: %d", job.Rid, p.Post.Id, p.Post.Author.Login, len(p.Post.Files)))
 
-	if c, err := doGroup.Do("posts", pGet(p.Post.Id)); err != nil {
-		if err := renderPost(body, &p.Post); err != nil {
-			logger(ERROR, fmt.Sprintf("Couldn't render post: %s", err))
-			return
-		} else {
-			doGroup.Do("posts", pPut(p.Post.Id, body.Bytes()))
-			logger(DEBUG, fmt.Sprintf("{%s} PCache miss (uid %s, csize %d)", job.Rid, p.Post.Id, pCache.Len()))
-		}
-	} else {
-		logger(DEBUG, fmt.Sprintf("{%s} PCache hit (uid %s, csize %d)", job.Rid, p.Post.Id, pCache.Len()))
-		body.Write(c.([]byte))
-	}
-
-	defer body.Reset()
-
-	person := atom.Person{
+	person := &atom.Person{
 		Name: p.Post.Author.Login,
 		URI:  fmt.Sprintf("https://%s.point.im/", p.Post.Author.Login),
 	}
 
-	post := atom.Text{
+	post := &atom.Text{
 		Type: "html",
-		Body: body.String(),
 	}
 
 	runestr := []rune(p.Post.Text)
@@ -87,8 +72,7 @@ func (job *Job) makeEntry(p *point.PostMeta) {
 		title = string(runestr)
 	}
 
-	job.Queue <- &Entry{
-		Atom: &atom.Entry{
+	atom := &atom.Entry{
 			Title: title,
 			ID:    fmt.Sprintf("%s/%s", point.POINTIM, p.Post.Id),
 			Link: []atom.Link{
@@ -99,12 +83,33 @@ func (job *Job) makeEntry(p *point.PostMeta) {
 			},
 			Published: atom.Time(p.Post.Created),
 			Updated:   atom.Time(p.Post.Created),
-			Author:    &person,
-			Content:   &post,
-		},
+			Author:    person,
+			Content:   post,
+		}
+
+	if c, err := doGroup.Do("posts", pGet(p.Post.Id)); err != nil {
+		if err := renderPost(body, &p.Post); err != nil {
+			logger(ERROR, fmt.Sprintf("Couldn't render post: %s", err))
+			job.Queue <- &Entry{
+				Atom: atom,
+				Timestamp: &p.Post.Created,
+			}
+			return
+		} else {
+			doGroup.Do("posts", pPut(p.Post.Id, body.Bytes()))
+			logger(DEBUG, fmt.Sprintf("{%s} PCache miss (uid %s, csize %d)", job.Rid, p.Post.Id, pCache.Len()))
+		}
+	} else {
+		logger(DEBUG, fmt.Sprintf("{%s} PCache hit (uid %s, csize %d)", job.Rid, p.Post.Id, pCache.Len()))
+		body.Write(c.([]byte))
+	}
+	post.Body = body.String()
+
+	logger(DEBUG, fmt.Sprintf("{%s} Pushing to queue entry: %s", job.Rid, p.Post.Id))
+	job.Queue <- &Entry{
+		Atom: atom,
 		Timestamp: &p.Post.Created,
 	}
-	job.Group.Done()
 }
 
 func (job *Job) makeFeed() *atom.Feed {
@@ -114,10 +119,12 @@ func (job *Job) makeFeed() *atom.Feed {
 	)
 	defer close(job.Queue)
 
-	job.Group.Wait()
-	for len(job.Queue) > 0 {
+	logger(DEBUG, fmt.Sprintf("{%s} Fetching entries", job.Rid))
+	for job.Workers > 0 {
+		job.Workers--
 		posts = append(posts, <-job.Queue)
 	}
+	logger(DEBUG, fmt.Sprintf("{%s} Sorting entries", job.Rid))
 	sort.Sort(Entries(posts))
 
 	if len(posts) > 0 {

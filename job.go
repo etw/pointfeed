@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"sync"
 
 	point "github.com/etw/pointapi"
 )
@@ -27,9 +26,9 @@ type Filter struct {
 
 type Job struct {
 	Rid       string
-	Meta      FeedMeta
+	Meta      *FeedMeta
 	Queue     chan *Entry
-	Group     *sync.WaitGroup
+	Workers   int
 	MinPosts  int
 	Blacklist *Filter
 }
@@ -67,14 +66,14 @@ func newJob(p url.Values) (Job, error) {
 		job.Blacklist = &bl
 	}
 
-	job.Group = new(sync.WaitGroup)
+	job.Workers = 0
 	job.Queue = make(chan *Entry, chanSize)
 
 	return job, nil
 }
 
 func (job *Job) procJob(res *http.ResponseWriter, fn func(int) (*point.PostList, error)) {
-	for num, start, has_next := 0, 0, true; has_next && num < job.MinPosts; {
+	for start, has_next := 0, true; has_next && job.Workers < job.MinPosts; {
 		logger(DEBUG, fmt.Sprintf("{%s} Requesting posts before: %d", job.Rid, start))
 		if data, err := fn(start); err != nil {
 			(*res).WriteHeader(500)
@@ -82,13 +81,12 @@ func (job *Job) procJob(res *http.ResponseWriter, fn func(int) (*point.PostList,
 		} else {
 			for i, _ := range data.Posts {
 				if filterPost(&data.Posts[i], job.Blacklist) {
-					job.Group.Add(1)
-					num++
+					job.Workers++
 					go job.makeEntry(&data.Posts[i])
 				}
 			}
 			start, has_next = data.Posts[len(data.Posts)-1].Uid, data.HasNext
-			logger(DEBUG, fmt.Sprintf("{%s} We have %d posts, need at least %d", job.Rid, num, job.MinPosts))
+			logger(DEBUG, fmt.Sprintf("{%s} We have %d posts, need at least %d", job.Rid, job.Workers, job.MinPosts))
 		}
 	}
 	job.resRender(res)

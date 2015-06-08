@@ -41,7 +41,7 @@ func allHandler(res http.ResponseWriter, req *http.Request) {
 	}
 	logger(INFO, fmt.Sprintf("{%s} %s %s", job.Rid, req.Method, req.RequestURI))
 
-	job.Meta = FeedMeta{
+	job.Meta = &FeedMeta{
 		Title: "All posts",
 		ID:    "https://point.im/all",
 		Href:  "https://point.im/all",
@@ -83,7 +83,7 @@ func tagsHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	job.Meta = FeedMeta{
+	job.Meta = &FeedMeta{
 		Title: fmt.Sprintf("Tagged posts (%s)", strings.Join(tags, ", ")),
 		ID:    fmt.Sprintf("https://point.im/?tag=%s", strings.Join(tags, "&tag=")),
 		Href:  fmt.Sprintf("https://point.im/?tag=%s", strings.Join(tags, "&tag=")),
