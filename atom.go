@@ -73,25 +73,25 @@ func (job *Job) makeEntry(p *point.PostMeta) {
 	}
 
 	atom := &atom.Entry{
-			Title: title,
-			ID:    fmt.Sprintf("%s/%s", point.POINTIM, p.Post.Id),
-			Link: []atom.Link{
-				atom.Link{
-					Rel:  "alternate",
-					Href: fmt.Sprintf("%s/%s", point.POINTIM, p.Post.Id),
-				},
+		Title: title,
+		ID:    fmt.Sprintf("%s/%s", point.POINTIM, p.Post.Id),
+		Link: []atom.Link{
+			atom.Link{
+				Rel:  "alternate",
+				Href: fmt.Sprintf("%s/%s", point.POINTIM, p.Post.Id),
 			},
-			Published: atom.Time(p.Post.Created),
-			Updated:   atom.Time(p.Post.Created),
-			Author:    person,
-			Content:   post,
-		}
+		},
+		Published: atom.Time(p.Post.Created),
+		Updated:   atom.Time(p.Post.Created),
+		Author:    person,
+		Content:   post,
+	}
 
 	if c, err := doGroup.Do("posts", pGet(p.Post.Id)); err != nil {
 		if err := renderPost(body, &p.Post); err != nil {
 			logger(ERROR, fmt.Sprintf("Couldn't render post: %s", err))
 			job.Queue <- &Entry{
-				Atom: atom,
+				Atom:      atom,
 				Timestamp: &p.Post.Created,
 			}
 			return
@@ -107,7 +107,7 @@ func (job *Job) makeEntry(p *point.PostMeta) {
 
 	logger(DEBUG, fmt.Sprintf("{%s} Pushing to queue entry: %s", job.Rid, p.Post.Id))
 	job.Queue <- &Entry{
-		Atom: atom,
+		Atom:      atom,
 		Timestamp: &p.Post.Created,
 	}
 }
