@@ -15,7 +15,13 @@ import (
 	"github.com/russross/blackfriday"
 )
 
-const imgFmt = `<p><a href="%s" rel="noreferrer" target="_blank"><img src="%s" alt="%s" title="%s" /></a></p>`
+const (
+	imgFmt = `<p><a href="%s" rel="noreferrer" target="_blank"><img src="%s" alt="%s" title="%s" /></a></p>`
+	audFmt = `<p><audo src="%s" controls><a href="%s" rel="noreferrer" target="_blank">%s</a></audio></p>`
+	vidFmt = `<p><video src="%s" controls><a href="%s" rel="noreferrer" target="_blank">%s</a></video></p>`
+	ytFmt  = `<p><iframe id="ytPlayer" type="text/html" width="640" height="390" src="https://www.youtube.com/embed/%s" frameborder="0"></iframe></p>`
+	cbFmt  = `<p><iframe id="coubVideo" type="text/html" width="450" height="360" src="https://coub.com/embed/%s" frameborder="0"></iframe></p>`
+)
 
 var secSites = []*regexp.Regexp{
 	regexp.MustCompilePOSIX(`^google\.(com|ru)$`),
@@ -41,7 +47,49 @@ var (
 	imgExt = regexp.MustCompilePOSIX(`.(jpe?g|JPE?G|png|PNG|gif|GIF)$`)
 	vidExt = regexp.MustCompilePOSIX(`.(flv|FLV|webm|WEBM|mp4|MP4)$`)
 	audExt = regexp.MustCompilePOSIX(`.(mp3|MP3|m4a|M4A|ogg|OGG)$`)
+	cbPath = regexp.MustCompilePOSIX(`^/view/([[:alnum:]]+)$`)
 )
+
+func mediaTrans(out *bytes.Buffer, link []byte) bool {
+	if u, err := url.Parse(string(link)); err == nil {
+		if p, ok := urlGelbooru(u); ok {
+			logger(DEBUG, fmt.Sprintf("Found gelbooru link: %s", link))
+			out.WriteString(fmt.Sprintf(imgFmt, link, p.Sample, link, p.Tags))
+			return true
+		}
+		if p, ok := urlDanbooru(u); ok {
+			logger(DEBUG, fmt.Sprintf("Found danbooru link: %s", link))
+			out.WriteString(fmt.Sprintf(imgFmt, link, p.Sample, link, p.Tags))
+			return true
+		}
+		if urlImage(u) {
+			logger(DEBUG, fmt.Sprintf("Found image link: %s", link))
+			out.WriteString(fmt.Sprintf(imgFmt, link, link, link, link))
+			return true
+		}
+		if urlAudio(u) {
+			logger(DEBUG, fmt.Sprintf("Found audio link: %s", link))
+			out.WriteString(fmt.Sprintf(audFmt, link, link, link))
+			return true
+		}
+		if urlVideo(u) {
+			logger(DEBUG, fmt.Sprintf("Found video link: %s", link))
+			out.WriteString(fmt.Sprintf(vidFmt, link, link, link))
+			return true
+		}
+		if id, ok := urlYoutube(u); ok {
+			logger(DEBUG, fmt.Sprintf("Found youtube link: %s", link))
+			out.WriteString(fmt.Sprintf(ytFmt, *id))
+			return true
+		}
+		if id, ok := urlCoub(u); ok {
+			logger(DEBUG, fmt.Sprintf("Found coub link: %s", link))
+			out.WriteString(fmt.Sprintf(cbFmt, *id))
+			return true
+		}
+	}
+	return false
+}
 
 func urlGelbooru(u *url.URL) (*booru.Post, bool) {
 	if !(u.Scheme == "http" && u.Host == "gelbooru.com" && u.Path == "/index.php") {
@@ -83,7 +131,6 @@ func urlDanbooru(u *url.URL) (*booru.Post, bool) {
 	if dbSites[u.Host] {
 		urlHttps(u)
 	}
-
 	return nil, false
 }
 
@@ -96,7 +143,6 @@ func urlImage(u *url.URL) bool {
 		urlHttps(u)
 		return true
 	}
-
 	return false
 }
 
@@ -109,21 +155,40 @@ func urlVideo(u *url.URL) bool {
 		urlHttps(u)
 		return true
 	}
-
 	return false
 }
 
-func urlYoutube(u *url.URL) bool {
+func urlYoutube(u *url.URL) (*string, bool) {
 	if !((u.Scheme == "http") || (u.Scheme == "https")) {
-		return false
+		return nil, false
 	}
 
-	if !((u.Host == "youtube.com") || (u.Host == "www.youtube.com") ||
-		(u.Host == "youtu.be")) || !(u.Path == "/watch") {
-		return false
+	query := u.Query()
+	if ((u.Host == "youtube.com") || (u.Host == "www.youtube.com")) &&
+		(u.Path == "/watch") {
+		if v, ok := query["v"]; !ok {
+			return nil, false
+		} else {
+			return &v[0], true
+		}
+	} else if u.Host == "youtu.be" {
+		var id = u.Path[1:]
+		return &id, true
+	}
+	return nil, false
+}
+func urlCoub(u *url.URL) (*string, bool) {
+	if !((u.Scheme == "http") || (u.Scheme == "https")) {
+		return nil, false
 	}
 
-	return false
+	if (u.Host == "coub.com") && cbPath.MatchString(u.Path) {
+		var ids = cbPath.FindStringSubmatch(u.Path)
+		if len(ids) == 2 {
+			return &ids[1], true
+		}
+	}
+	return nil, false
 }
 
 func urlAudio(u *url.URL) bool {
@@ -135,7 +200,6 @@ func urlAudio(u *url.URL) bool {
 		urlHttps(u)
 		return true
 	}
-
 	return false
 }
 

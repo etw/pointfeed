@@ -110,7 +110,7 @@ func main() {
 
 	http.HandleFunc("/", rootHandler)
 	http.HandleFunc("/stats/", statsHandler)
-	http.HandleFunc("/stats/cache", cacheHandler(&stats))
+	http.HandleFunc("/stats/cache", cacheHandler)
 	http.HandleFunc("/feed/all", allHandler)
 	http.HandleFunc("/feed/tags", tagsHandler)
 

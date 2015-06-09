@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"net/url"
 	"regexp"
 	"text/template"
@@ -126,19 +125,8 @@ func (options *Html) AutoLink(out *bytes.Buffer, link []byte, kind int) {
 		skipRanges = htmlEntity.FindAllIndex(link, -1)
 	)
 
-	if u, err := url.Parse(string(link)); err == nil {
-		if p, ok := urlGelbooru(u); ok {
-			out.WriteString(fmt.Sprintf(imgFmt, link, p.Sample, link, p.Tags))
-			return
-		}
-		if p, ok := urlDanbooru(u); ok {
-			out.WriteString(fmt.Sprintf(imgFmt, link, p.Sample, link, p.Tags))
-			return
-		}
-		if urlImage(u) {
-			out.WriteString(fmt.Sprintf(imgFmt, link, link, link, link))
-			return
-		}
+	if mediaTrans(out, link) {
+		return
 	}
 
 	out.WriteString(`<a href="`)
