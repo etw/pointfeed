@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"net/url"
 	"regexp"
 	"text/template"
@@ -126,42 +125,8 @@ func (options *Html) AutoLink(out *bytes.Buffer, link []byte, kind int) {
 		skipRanges = htmlEntity.FindAllIndex(link, -1)
 	)
 
-	if u, err := url.Parse(string(link)); err == nil {
-		if p, ok := urlGelbooru(u); ok {
-			logger(DEBUG, fmt.Sprintf("Found gelbooru link: %s", link))
-			out.WriteString(fmt.Sprintf(imgFmt, link, p.Sample, link, p.Tags))
-			return
-		}
-		if p, ok := urlDanbooru(u); ok {
-			logger(DEBUG, fmt.Sprintf("Found danbooru link: %s", link))
-			out.WriteString(fmt.Sprintf(imgFmt, link, p.Sample, link, p.Tags))
-			return
-		}
-		if urlImage(u) {
-			logger(DEBUG, fmt.Sprintf("Found image link: %s", link))
-			out.WriteString(fmt.Sprintf(imgFmt, link, link, link, link))
-			return
-		}
-		if urlAudio(u) {
-			logger(DEBUG, fmt.Sprintf("Found audio link: %s", link))
-			out.WriteString(fmt.Sprintf(audFmt, link, link, link))
-			return
-		}
-		if urlVideo(u) {
-			logger(DEBUG, fmt.Sprintf("Found video link: %s", link))
-			out.WriteString(fmt.Sprintf(vidFmt, link, link, link))
-			return
-		}
-		if id, ok := urlYoutube(u); ok {
-			logger(DEBUG, fmt.Sprintf("Found youtube link: %s", link))
-			out.WriteString(fmt.Sprintf(ytFmt, *id))
-			return
-		}
-		if id, ok := urlCoub(u); ok {
-			logger(DEBUG, fmt.Sprintf("Found coub link: %s", link))
-			out.WriteString(fmt.Sprintf(cbFmt, *id))
-			return
-		}
+	if mediaTrans(out, link) {
+		return
 	}
 
 	out.WriteString(`<a href="`)
