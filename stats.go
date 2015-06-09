@@ -17,7 +17,7 @@ type StatsCache struct {
 }
 
 type StatsPCache struct {
-	Size   int `json:"size"`
+	Size   int    `json:"size"`
 	Total  uint64 `json:"total"`
 	Hit    uint64 `json:"hit"`
 	Missed uint64 `json:"missed"`
@@ -28,9 +28,7 @@ func statsHandler(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(res, listHref, "/stats/cache", "Статистика кеша")
 }
 
-func cacheHandler(s *Stats) func(res http.ResponseWriter, req *http.Request) {
-	return func(res http.ResponseWriter, req *http.Request) {
-		res.Header().Set("Content-Type", "application/json; charset=utf-8")
-		json.NewEncoder(res).Encode(s.Cache)
-	}
+func cacheHandler(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", "application/json; charset=utf-8")
+	json.NewEncoder(res).Encode(stats.Cache)
 }
