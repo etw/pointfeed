@@ -10,6 +10,18 @@ const listHref = `<p><a href="%s" rel="noreferrer">%s</a></p>`
 
 type Stats struct {
 	Cache StatsCache
+	Media StatsMedia
+}
+
+type StatsMedia struct {
+	Gelbooru uint64 `json:"gelbooru"`
+	Danbooru uint64 `json:"danbooru"`
+	Youtube  uint64 `json:"youtube"`
+	Coub     uint64 `json:"coub"`
+	Image   uint64 `json:"images"`
+	Audio    uint64 `json:"audio"`
+	Video    uint64 `json:"video"`
+	Https    uint64 `json:"https"`
 }
 
 type StatsCache struct {
@@ -31,4 +43,9 @@ func statsHandler(res http.ResponseWriter, req *http.Request) {
 func cacheHandler(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(res).Encode(stats.Cache)
+}
+
+func mediaHandler(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", "application/json; charset=utf-8")
+	json.NewEncoder(res).Encode(stats.Media)
 }
