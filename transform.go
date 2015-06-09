@@ -15,7 +15,11 @@ import (
 	"github.com/russross/blackfriday"
 )
 
-const imgFmt = `<p><a href="%s" rel="noreferrer" target="_blank"><img src="%s" alt="%s" title="%s" /></a></p>`
+const (
+	imgFmt = `<p><a href="%s" rel="noreferrer" target="_blank"><img src="%s" alt="%s" title="%s" /></a></p>`
+	ytFmt  = `<p><iframe id="ytPlayer" type="text/html" width="640" height="390" src="https://www.youtube.com/embed/%s" frameborder="0"></iframe></p>`
+	cbFmt  = `<p><iframe id="coubVideo" type="text/html" width="450" height="360" src="https://coub.com/embed/%s" frameborder="0"></iframe></p>`
+)
 
 var secSites = []*regexp.Regexp{
 	regexp.MustCompilePOSIX(`^google\.(com|ru)$`),
@@ -41,6 +45,7 @@ var (
 	imgExt = regexp.MustCompilePOSIX(`.(jpe?g|JPE?G|png|PNG|gif|GIF)$`)
 	vidExt = regexp.MustCompilePOSIX(`.(flv|FLV|webm|WEBM|mp4|MP4)$`)
 	audExt = regexp.MustCompilePOSIX(`.(mp3|MP3|m4a|M4A|ogg|OGG)$`)
+	cbPath = regexp.MustCompilePOSIX(`^/view/([[:alnum:]]+)$`)
 )
 
 func urlGelbooru(u *url.URL) (*booru.Post, bool) {
@@ -113,17 +118,39 @@ func urlVideo(u *url.URL) bool {
 	return false
 }
 
-func urlYoutube(u *url.URL) bool {
+func urlYoutube(u *url.URL) (*string, bool) {
 	if !((u.Scheme == "http") || (u.Scheme == "https")) {
-		return false
+		return nil, false
 	}
 
-	if !((u.Host == "youtube.com") || (u.Host == "www.youtube.com") ||
-		(u.Host == "youtu.be")) || !(u.Path == "/watch") {
-		return false
+	query := u.Query()
+	if ((u.Host == "youtube.com") || (u.Host == "www.youtube.com")) &&
+		(u.Path == "/watch") {
+		if v, ok := query["v"]; !ok {
+			return nil, false
+		} else {
+			return &v[0], true
+		}
+	} else if u.Host == "youtu.be" {
+		var id = u.Path[1:]
+		return &id, true
 	}
 
-	return false
+	return nil, false
+}
+func urlCoub(u *url.URL) (*string, bool) {
+	if !((u.Scheme == "http") || (u.Scheme == "https")) {
+		return nil, false
+	}
+
+	if (u.Host == "coub.com") && cbPath.MatchString(u.Path) {
+		var ids = cbPath.FindStringSubmatch(u.Path)
+		if len(ids) == 2 {
+			return &ids[1], true
+		}
+	}
+
+	return nil, false
 }
 
 func urlAudio(u *url.URL) bool {
