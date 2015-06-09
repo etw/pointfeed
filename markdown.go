@@ -142,6 +142,16 @@ func (options *Html) AutoLink(out *bytes.Buffer, link []byte, kind int) {
 			out.WriteString(fmt.Sprintf(imgFmt, link, link, link, link))
 			return
 		}
+		if urlAudio(u) {
+			logger(DEBUG, fmt.Sprintf("Found audio link: %s", link))
+			out.WriteString(fmt.Sprintf(audFmt, link, link, link))
+			return
+		}
+		if urlVideo(u) {
+			logger(DEBUG, fmt.Sprintf("Found video link: %s", link))
+			out.WriteString(fmt.Sprintf(vidFmt, link, link, link))
+			return
+		}
 		if id, ok := urlYoutube(u); ok {
 			logger(DEBUG, fmt.Sprintf("Found youtube link: %s", link))
 			out.WriteString(fmt.Sprintf(ytFmt, *id))

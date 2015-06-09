@@ -17,6 +17,8 @@ import (
 
 const (
 	imgFmt = `<p><a href="%s" rel="noreferrer" target="_blank"><img src="%s" alt="%s" title="%s" /></a></p>`
+	audFmt = `<p><audo src="%s" controls><a href="%s" rel="noreferrer" target="_blank">%s</a></audio></p>`
+	vidFmt = `<p><video src="%s" controls><a href="%s" rel="noreferrer" target="_blank">%s</a></video></p>`
 	ytFmt  = `<p><iframe id="ytPlayer" type="text/html" width="640" height="390" src="https://www.youtube.com/embed/%s" frameborder="0"></iframe></p>`
 	cbFmt  = `<p><iframe id="coubVideo" type="text/html" width="450" height="360" src="https://coub.com/embed/%s" frameborder="0"></iframe></p>`
 )
