@@ -29,6 +29,7 @@ https://pointfeed-etw.rhcloud.com/feed/tags?tag=anime_art&nouser=animal-love
 
 ### Фичи
 
+* человекочитаемые заголовки постов;
 * поддержка работы с поинтом через SOCKS-прокси (arts не спалит ОйПи!);
 * поддержка Markdown разметки;
 * вставка прикрепленных к постам картинок;
@@ -38,6 +39,7 @@ https://pointfeed-etw.rhcloud.com/feed/tags?tag=anime_art&nouser=animal-love
 * автозамена ссылок на безопасные (http -> https);
 * показ изображений вместо прямых ссылок на них;
 * показ изображений из постов на gelbooru;
+* замена youtube/coub-ссылок на встроенный плеер
 * кеширование отрендереных постов.
 
 #### Слава BnW!

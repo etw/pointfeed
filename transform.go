@@ -130,7 +130,7 @@ func urlDanbooru(u *url.URL) (*booru.Post, bool) {
 		return nil, false
 	}
 
-	if dbSites[u.Host] {
+	if s, ok := dbSites[u.Host]; ok && s {
 		urlHttps(u)
 		atomic.AddUint64(&stats.Media.Danbooru,1)
 	}
