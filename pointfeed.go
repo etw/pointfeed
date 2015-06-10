@@ -111,6 +111,7 @@ func main() {
 	http.HandleFunc("/", rootHandler)
 	http.HandleFunc("/stats/", statsHandler)
 	http.HandleFunc("/stats/cache", cacheHandler)
+	http.HandleFunc("/stats/media", mediaHandler)
 	http.HandleFunc("/feed/all", allHandler)
 	http.HandleFunc("/feed/tags", tagsHandler)
 

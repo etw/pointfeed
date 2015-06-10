@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"text/template"
+	"sync/atomic"
 
 	booru "github.com/etw/gobooru"
 	point "github.com/etw/pointapi"
@@ -43,7 +44,7 @@ var dbSites = map[string]bool{
 }
 
 var (
-	dbPost = regexp.MustCompilePOSIX(`^/post/[0-9]+$`)
+	dbPost = regexp.MustCompilePOSIX(`^/post/([[:digit:]]+)$`)
 	imgExt = regexp.MustCompilePOSIX(`.(jpe?g|JPE?G|png|PNG|gif|GIF)$`)
 	vidExt = regexp.MustCompilePOSIX(`.(flv|FLV|webm|WEBM|mp4|MP4)$`)
 	audExt = regexp.MustCompilePOSIX(`.(mp3|MP3|m4a|M4A|ogg|OGG)$`)
@@ -113,6 +114,7 @@ func urlGelbooru(u *url.URL) (*booru.Post, bool) {
 			if p, err := apiset.Gelbooru.GetById(val); err != nil {
 				panic(fmt.Sprintf("Failed to retrieve gelbooru pic %s: %s", v, err))
 			} else {
+				atomic.AddUint64(&stats.Media.Gelbooru,1)
 				return p, true
 			}
 		}
@@ -130,6 +132,7 @@ func urlDanbooru(u *url.URL) (*booru.Post, bool) {
 
 	if dbSites[u.Host] {
 		urlHttps(u)
+		atomic.AddUint64(&stats.Media.Danbooru,1)
 	}
 	return nil, false
 }
@@ -141,6 +144,7 @@ func urlImage(u *url.URL) bool {
 
 	if imgExt.MatchString(u.Path) {
 		urlHttps(u)
+		atomic.AddUint64(&stats.Media.Image,1)
 		return true
 	}
 	return false
@@ -153,6 +157,20 @@ func urlVideo(u *url.URL) bool {
 
 	if vidExt.MatchString(u.Path) {
 		urlHttps(u)
+		atomic.AddUint64(&stats.Media.Video,1)
+		return true
+	}
+	return false
+}
+
+func urlAudio(u *url.URL) bool {
+	if !((u.Scheme == "http") || (u.Scheme == "https")) {
+		return false
+	}
+
+	if audExt.MatchString(u.Path) {
+		urlHttps(u)
+		atomic.AddUint64(&stats.Media.Audio,1)
 		return true
 	}
 	return false
@@ -169,14 +187,17 @@ func urlYoutube(u *url.URL) (*string, bool) {
 		if v, ok := query["v"]; !ok {
 			return nil, false
 		} else {
+			atomic.AddUint64(&stats.Media.Youtube,1)
 			return &v[0], true
 		}
 	} else if u.Host == "youtu.be" {
 		var id = u.Path[1:]
+		atomic.AddUint64(&stats.Media.Youtube,1)
 		return &id, true
 	}
 	return nil, false
 }
+
 func urlCoub(u *url.URL) (*string, bool) {
 	if !((u.Scheme == "http") || (u.Scheme == "https")) {
 		return nil, false
@@ -185,26 +206,16 @@ func urlCoub(u *url.URL) (*string, bool) {
 	if (u.Host == "coub.com") && cbPath.MatchString(u.Path) {
 		var ids = cbPath.FindStringSubmatch(u.Path)
 		if len(ids) == 2 {
+			atomic.AddUint64(&stats.Media.Coub,1)
 			return &ids[1], true
 		}
 	}
 	return nil, false
 }
 
-func urlAudio(u *url.URL) bool {
-	if !((u.Scheme == "http") || (u.Scheme == "https")) {
-		return false
-	}
-
-	if audExt.MatchString(u.Path) {
-		urlHttps(u)
-		return true
-	}
-	return false
-}
-
 func urlHttps(u *url.URL) bool {
 	if u.Scheme == "http" && isMatching(secSites, &u.Host) {
+		atomic.AddUint64(&stats.Media.Https,1)
 		u.Scheme = "https"
 		return true
 	}
