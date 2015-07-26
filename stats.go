@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-const listHref = `<p><a href="%s" rel="noreferrer">%s</a></p>`
+const listHref = `<p><a href="%s" rel="noreferrer">%s</a></p>\n`
 
 type Stats struct {
 	Cache StatsCache
@@ -18,7 +18,7 @@ type StatsMedia struct {
 	Danbooru uint64 `json:"danbooru"`
 	Youtube  uint64 `json:"youtube"`
 	Coub     uint64 `json:"coub"`
-	Image   uint64 `json:"images"`
+	Image    uint64 `json:"images"`
 	Audio    uint64 `json:"audio"`
 	Video    uint64 `json:"video"`
 	Https    uint64 `json:"https"`
@@ -38,6 +38,7 @@ type StatsPCache struct {
 func statsHandler(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "text/html; charset=utf-8")
 	fmt.Fprintf(res, listHref, "/stats/cache", "Статистика кеша")
+	fmt.Fprintf(res, listHref, "/stats/media", "Статистика по обработке URL-ов")
 }
 
 func cacheHandler(res http.ResponseWriter, req *http.Request) {
