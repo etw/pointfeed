@@ -18,7 +18,7 @@ type StatsMedia struct {
 	Danbooru uint64 `json:"danbooru"`
 	Youtube  uint64 `json:"youtube"`
 	Coub     uint64 `json:"coub"`
-	Image   uint64 `json:"images"`
+	Image    uint64 `json:"images"`
 	Audio    uint64 `json:"audio"`
 	Video    uint64 `json:"video"`
 	Https    uint64 `json:"https"`
