@@ -20,23 +20,24 @@ type FeedMeta struct {
 }
 
 type Filter struct {
-	Users []string
-	Tags  []string
+	NoUsers []string
+	NoTags  []string
+	AndTags []string
 }
 
 type Job struct {
-	Rid       string
-	Meta      *FeedMeta
-	Queue     chan *Entry
-	Workers   int
-	MinPosts  int
-	Blacklist *Filter
+	Rid      string
+	Meta     *FeedMeta
+	Queue    chan *Entry
+	Workers  int
+	MinPosts int
+	Bnwlist  *Filter
 }
 
 func newJob(p url.Values) (Job, error) {
 	var (
 		job Job
-		bl  Filter
+		fil Filter
 	)
 
 	rid := make([]byte, 8)
@@ -58,12 +59,16 @@ func newJob(p url.Values) (Job, error) {
 	}
 
 	if val, ok := p["nouser"]; ok {
-		bl.Users = val
-		job.Blacklist = &bl
+		fil.NoUsers = val
+		job.Bnwlist = &fil
 	}
 	if val, ok := p["notag"]; ok {
-		bl.Tags = val
-		job.Blacklist = &bl
+		fil.NoTags = val
+		job.Bnwlist = &fil
+	}
+	if val, ok := p["andtag"]; ok {
+		fil.AndTags = val
+		job.Bnwlist = &fil
 	}
 
 	job.Workers = 0
@@ -80,7 +85,7 @@ func (job *Job) procJob(res *http.ResponseWriter, fn func(int) (*point.PostList,
 			return
 		} else {
 			for i, _ := range data.Posts {
-				if filterPost(&data.Posts[i], job.Blacklist) {
+				if filterPost(&data.Posts[i], job.Bnwlist) {
 					job.Workers++
 					go job.makeEntry(&data.Posts[i])
 				}
