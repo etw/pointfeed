@@ -86,8 +86,9 @@ func filterPost(p *point.PostMeta, f *Filter) bool {
 	if f == nil {
 		return true
 	}
-	if isElem(f.Users, &p.Post.Author.Login) ||
-		haveIntersec(f.Tags, p.Post.Tags) {
+	if isElem(f.NoUsers, &p.Post.Author.Login) ||
+		haveIntersec(f.NoTags, p.Post.Tags) ||
+		!haveIntersec(f.AndTags, p.Post.Tags) {
 		return false
 	}
 	return true

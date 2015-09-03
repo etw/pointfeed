@@ -72,6 +72,12 @@ func (job *Job) makeEntry(p *point.PostMeta) {
 		title = string(runestr)
 	}
 
+	ptime, err := time.Parse(point.POINTTIMELAYOUT, p.Post.Created)
+	if err != nil {
+		logger(ERROR, fmt.Sprintf("{%s} Failed to parse time: %s", job.Rid, err))
+		ptime = time.Now()
+	}
+
 	atom := &atom.Entry{
 		Title: title,
 		ID:    fmt.Sprintf("%s/%s", point.POINTIM, p.Post.Id),
@@ -81,8 +87,8 @@ func (job *Job) makeEntry(p *point.PostMeta) {
 				Href: fmt.Sprintf("%s/%s", point.POINTIM, p.Post.Id),
 			},
 		},
-		Published: atom.Time(p.Post.Created),
-		Updated:   atom.Time(p.Post.Created),
+		Published: atom.Time(ptime),
+		Updated:   atom.Time(ptime),
 		Author:    person,
 		Content:   post,
 	}
@@ -92,7 +98,7 @@ func (job *Job) makeEntry(p *point.PostMeta) {
 			logger(ERROR, fmt.Sprintf("Couldn't render post: %s", err))
 			job.Queue <- &Entry{
 				Atom:      atom,
-				Timestamp: &p.Post.Created,
+				Timestamp: &ptime,
 			}
 			return
 		} else {
@@ -108,7 +114,7 @@ func (job *Job) makeEntry(p *point.PostMeta) {
 	logger(DEBUG, fmt.Sprintf("{%s} Pushing to queue entry: %s", job.Rid, p.Post.Id))
 	job.Queue <- &Entry{
 		Atom:      atom,
-		Timestamp: &p.Post.Created,
+		Timestamp: &ptime,
 	}
 }
 
