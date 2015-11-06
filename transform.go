@@ -110,11 +110,12 @@ func urlGelbooru(u *url.URL) (*booru.Post, bool) {
 		return nil, false
 	} else {
 		if val, err := strconv.Atoi(v[0]); err != nil {
-			panic(fmt.Sprintf("Failed to parse post id %s: %s", v[0], err))
+			logger(ERROR, fmt.Sprintf("Failed to parse post id %s: %s", v[0], err))
 			return nil, false
 		} else {
 			if p, err := apiset.Gelbooru.GetById(val); err != nil {
-				panic(fmt.Sprintf("Failed to retrieve gelbooru pic %s: %s", v, err))
+				logger(ERROR, fmt.Sprintf("Failed to retrieve gelbooru pic %s: %s", v, err))
+				return nil, false
 			} else {
 				atomic.AddUint64(&stats.Media.Gelbooru, 1)
 				return p, true
