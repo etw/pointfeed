@@ -44,6 +44,8 @@ func main() {
 		ddir string // Data directory
 		pcsz int    //Size of posts cache
 
+		gbauth *booru.GbAuth // Gelbooru auth data
+
 		socks proxy.Dialer
 	)
 
@@ -52,6 +54,8 @@ func main() {
 	flag.StringVar(&port, "port", "8000", "Port to listen")
 	flag.StringVar(&auth, "auth", "", "Authentication token")
 	flag.StringVar(&ddir, "data", ".", "Data directory")
+	flag.StringVar(&ddir, "gbuser", ".", "Gelbooru user id")
+	flag.StringVar(&ddir, "gbhash", ".", "Gelbooru password hash")
 	flag.IntVar(&loglvl, "loglevel", INFO, "Logging level [0-4]")
 	flag.IntVar(&pcsz, "pcachesz", pCacheSize, "Size of posts cache")
 	flag.Parse()
@@ -87,9 +91,17 @@ func main() {
 		Transport: trans,
 	}
 
+	if len(os.Getenv("GB_USER")) > 0 && len(os.Getenv("GB_HASH")) > 0 {
+		gbauth = &booru.GbAuth{
+			User: os.Getenv("GB_USER"),
+			Hash: os.Getenv("GB_HASH"),
+		}
+		logger(INFO, "Got gelbooru auth from environment")
+	}
+
 	apiset = &APISet{
 		Point:    point.New(&client, point.POINTAPI, &auth),
-		Gelbooru: booru.NewGb(&client, booru.GELBOORU),
+		Gelbooru: booru.NewGb(&client, booru.GELBOORU, gbauth),
 		Danbooru: booru.NewDb(&client, booru.DANBOORU),
 	}
 
