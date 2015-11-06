@@ -96,7 +96,7 @@ func main() {
 			User: os.Getenv("GB_USER"),
 			Hash: os.Getenv("GB_HASH"),
 		}
-		logger(INFO, "Got gelbooru auth from environment")
+		logger(INFO, "Got gelbooru auth from environment variables")
 	}
 
 	apiset = &APISet{
