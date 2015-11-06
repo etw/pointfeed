@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-const listHref = `<p><a href="%s" rel="noreferrer">%s</a></p>\n`
+const listHref = `<p><a href="%s" rel="noreferrer">%s</a></p>`
 
 type Stats struct {
 	Cache StatsCache
